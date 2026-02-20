@@ -229,7 +229,7 @@ const styles = {
   },
 };
 
-export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound }) {
+export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound, onCharResult }) {
   const { addXP } = gameState;
   const [charList, setCharList] = useState([]);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -265,12 +265,14 @@ export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound }
   const handleKnow = useCallback(() => {
     playSound('correct');
     addXP(3);
+    if (onCharResult) onCharResult(charList[currentIdx].char, true);
     setKnown((prev) => [...prev, charList[currentIdx]]);
     goNext();
   }, [playSound, addXP, charList, currentIdx, goNext]);
 
   const handleDontKnow = useCallback(() => {
     playSound('click');
+    if (onCharResult) onCharResult(charList[currentIdx].char, false);
     setUnknown((prev) => [...prev, charList[currentIdx]]);
     goNext();
   }, [playSound, charList, currentIdx, goNext]);

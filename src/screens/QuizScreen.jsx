@@ -195,7 +195,7 @@ function getOptionLabel(item, type) {
   return item.sound;
 }
 
-export default function QuizScreen({ hanjaPool, onHome, gameState, playSound }) {
+export default function QuizScreen({ hanjaPool, onHome, gameState, playSound, onCharResult }) {
   const { state, addXP, loseHeart, incrementStreak, resetStreak, addStudyResult } = gameState;
   const [questions, setQuestions] = useState([]);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -244,6 +244,7 @@ export default function QuizScreen({ hanjaPool, onHome, gameState, playSound }) 
       loseHeart();
       addStudyResult(false);
     }
+    if (onCharResult) onCharResult(q.correct.char, correct);
 
     timerRef.current = setTimeout(() => {
       if (currentIdx + 1 >= questions.length) {

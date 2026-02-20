@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { theme } from './styles/theme.js';
-import { hanjaData, getAllHanja, getHanjaByLevels } from './data/index.js';
+import { getHanjaUpToLevel } from './data/index.js';
 import { useGameState } from './hooks/useGameState.js';
 import { useSound } from './hooks/useSound.js';
 import { useStorage, KEYS } from './hooks/useStorage.js';
@@ -9,9 +9,8 @@ import XPBar from './components/XPBar.jsx';
 import LevelUpModal from './components/LevelUpModal.jsx';
 import HomeScreen from './screens/HomeScreen.jsx';
 import QuizScreen from './screens/QuizScreen.jsx';
-import MatchScreen from './screens/MatchScreen.jsx';
-import WriteScreen from './screens/WriteScreen.jsx';
 import ReviewScreen from './screens/ReviewScreen.jsx';
+import ProgressScreen from './screens/ProgressScreen.jsx';
 
 const appStyles = {
   wrapper: {
@@ -25,22 +24,21 @@ const appStyles = {
   },
 };
 
-function getPool(selectedLevel) {
-  if (selectedLevel === '\uC804\uCCB4') {
-    return getAllHanja();
-  }
-  return getHanjaByLevels([selectedLevel]);
-}
-
 function App() {
   const storage = useStorage();
   const savedState = storage.get(KEYS.USER_PROGRESS);
   const gameState = useGameState(savedState);
-  const { playSound, soundEnabled, toggleSound } = useSound();
+  const { playSound } = useSound();
   const { state, closeLevelUp } = gameState;
 
   const [screen, setScreen] = useState('home');
-  const [selectedLevel, setSelectedLevel] = useState('8\uAE09');
+  const savedTarget = storage.get(KEYS.SETTINGS);
+  const [targetLevel, setTargetLevel] = useState(
+    (savedTarget && savedTarget.targetLevel) || '6급'
+  );
+  const [charMastery, setCharMastery] = useState(
+    () => storage.get(KEYS.CHAR_MASTERY) || {}
+  );
 
   useEffect(() => {
     storage.set(KEYS.USER_PROGRESS, {
@@ -58,6 +56,14 @@ function App() {
   }, [state, storage]);
 
   useEffect(() => {
+    storage.set(KEYS.CHAR_MASTERY, charMastery);
+  }, [charMastery, storage]);
+
+  useEffect(() => {
+    storage.set(KEYS.SETTINGS, { targetLevel });
+  }, [targetLevel, storage]);
+
+  useEffect(() => {
     if (state.showLevelUp) {
       playSound('levelup');
     }
@@ -73,36 +79,48 @@ function App() {
     setScreen(mode);
   }, [playSound]);
 
-  const handleSelectLevel = useCallback((level) => {
+  const handleSelectTargetLevel = useCallback((level) => {
     playSound('click');
-    setSelectedLevel(level);
+    setTargetLevel(level);
   }, [playSound]);
 
-  const hanjaPool = getPool(selectedLevel);
+  const handleCharResult = useCallback((char, correct) => {
+    setCharMastery((prev) => {
+      const existing = prev[char] || { correct: 0, wrong: 0 };
+      return {
+        ...prev,
+        [char]: {
+          correct: existing.correct + (correct ? 1 : 0),
+          wrong: existing.wrong + (correct ? 0 : 1),
+        },
+      };
+    });
+  }, []);
+
+  const targetPool = getHanjaUpToLevel(targetLevel);
   const requiredXP = state.level * 100;
 
   const renderScreen = () => {
     const sharedProps = {
-      hanjaPool,
+      hanjaPool: targetPool,
       onHome: goHome,
       gameState,
       playSound,
+      onCharResult: handleCharResult,
     };
 
     switch (screen) {
       case 'quiz':
         return <QuizScreen {...sharedProps} />;
-      case 'match':
-        return <MatchScreen {...sharedProps} />;
-      case 'write':
-        return <WriteScreen {...sharedProps} />;
       case 'review':
         return <ReviewScreen {...sharedProps} />;
+      case 'progress':
+        return <ProgressScreen targetPool={targetPool} charMastery={charMastery} />;
       default:
         return (
           <HomeScreen
-            selectedLevel={selectedLevel}
-            onSelectLevel={handleSelectLevel}
+            targetLevel={targetLevel}
+            onSelectTargetLevel={handleSelectTargetLevel}
             onSelectMode={handleSelectMode}
             stats={state}
           />

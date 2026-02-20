@@ -12,5 +12,12 @@ export const hanjaData = {
   '6급': hanja6,
 };
 
+export const LEVEL_ORDER = ['8급', '준7급', '7급', '준6급', '6급'];
+
 export const getAllHanja = () => Object.values(hanjaData).flat();
 export const getHanjaByLevels = (levels) => levels.flatMap(l => hanjaData[l] || []);
+export const getHanjaUpToLevel = (targetLevel) => {
+  const idx = LEVEL_ORDER.indexOf(targetLevel);
+  if (idx === -1) return [];
+  return LEVEL_ORDER.slice(0, idx + 1).flatMap(l => hanjaData[l] || []);
+};
