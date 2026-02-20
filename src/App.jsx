@@ -15,6 +15,7 @@ import ReviewScreen from './screens/ReviewScreen.jsx';
 
 const appStyles = {
   wrapper: {
+    width: '100%',
     maxWidth: theme.sizes.maxWidth,
     margin: '0 auto',
     minHeight: '100vh',
