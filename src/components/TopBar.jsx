@@ -10,7 +10,7 @@ const styles = {
     justifyContent: 'space-between',
     padding: '0 16px',
     width: '100%',
-    maxWidth: theme.sizes.maxWidth,
+    boxSizing: 'border-box',
     position: 'sticky',
     top: 0,
     zIndex: 100,
