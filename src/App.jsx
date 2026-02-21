@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { theme } from './styles/theme.js';
 import { getHanjaUpToLevel } from './data/index.js';
 import { useGameState } from './hooks/useGameState.js';
@@ -97,7 +97,7 @@ function App() {
     });
   }, []);
 
-  const targetPool = getHanjaUpToLevel(targetLevel);
+  const targetPool = useMemo(() => getHanjaUpToLevel(targetLevel), [targetLevel]);
   const requiredXP = state.level * 100;
 
   const renderScreen = () => {
