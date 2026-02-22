@@ -89,8 +89,9 @@ export default function WritingCanvas({ char, width = 280, height = 280, onCompl
         strokeAnimationSpeed: 1,
         delayBetweenStrokes: 200,
         strokeColor: '#ffffff', // 획 색상 (흰색)
-        outlineColor: '#555555', // 배경 힌트 색상 (회색) - 다크 모드에 맞춰 밝은 회색
+        outlineColor: '#555555', // 배경 힌트 색상 (회색)
         radicalColor: theme.colors.accent, // 부수 색상 (강조)
+        drawingWidth: 20, // 획 굵기 (기본값보다 훨씬 두껍게 설정)
         googlePolyfill: true, // 구글 폰트 데이터 백업 사용
         charDataLoader: (char, onComplete) => {
           fetch(`https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0/${char}.json`)
