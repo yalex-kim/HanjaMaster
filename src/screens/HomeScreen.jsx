@@ -5,7 +5,7 @@ import { LEVEL_ORDER } from '../data/index.js';
 const MODES = [
   { id: 'quiz', label: '한자 퀴즈', icon: '\uD83D\uDCDD', gradient: 'linear-gradient(135deg, #e94560, #c62a42)' },
   { id: 'write', label: '쓰기 연습', icon: '✍️', gradient: 'linear-gradient(135deg, #FF9966, #FF5E62)' },
-  { id: 'review', label: '한자 복습', icon: '\uD83D\uDCD6', gradient: 'linear-gradient(135deg, #533483, #3d2561)' },
+  { id: 'review', label: '복습 퀴즈', icon: '\uD83D\uDD04', gradient: 'linear-gradient(135deg, #533483, #3d2561)' },
   { id: 'progress', label: '학습 현황', icon: '\uD83D\uDCCA', gradient: 'linear-gradient(135deg, #0f3460, #0a2647)' },
 ];
 

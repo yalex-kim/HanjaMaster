@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { theme } from '../styles/theme.js';
 import { shuffle } from '../utils/shuffle.js';
 
-const TOTAL_COUNT = 20;
+// 복습 퀴즈는 최대 20문제까지
+const MAX_REVIEW_COUNT = 20;
 
 const styles = {
   container: {
@@ -12,12 +13,27 @@ const styles = {
     alignItems: 'center',
     minHeight: 'calc(100vh - 64px)',
   },
+  progressBar: {
+    width: '100%',
+    height: '6px',
+    background: theme.colors.surface,
+    borderRadius: '3px',
+    marginBottom: '8px',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    background: '#8b5cf6', // 복습은 보라색
+    borderRadius: '3px',
+    transition: 'width 0.3s ease',
+  },
   progressText: {
     fontSize: '13px',
     color: theme.colors.textSecondary,
-    marginBottom: '10px',
+    marginBottom: '8px',
     width: '100%',
-    textAlign: 'center',
+    display: 'flex',
+    justifyContent: 'space-between',
   },
   statsBadge: {
     background: theme.colors.surface,
@@ -25,420 +41,383 @@ const styles = {
     borderRadius: '12px',
     fontSize: '13px',
     fontWeight: 'bold',
-    color: theme.colors.accent,
-    marginBottom: '16px',
+    color: '#8b5cf6',
+    marginBottom: '24px',
     border: `1px solid ${theme.colors.secondary}`,
   },
-  cardWrapper: {
+  questionArea: {
     flex: 1,
     display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    marginBottom: '24px',
-    perspective: '600px',
-  },
-  card: {
-    width: '100%',
-    maxWidth: '340px',
-    minHeight: '280px',
-    borderRadius: '20px',
-    background: theme.colors.surface,
-    boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '32px 24px',
-    cursor: 'pointer',
-    transition: 'transform 0.5s ease',
-    transformStyle: 'preserve-3d',
-    position: 'relative',
-    userSelect: 'none',
-  },
-  cardFlipped: {
-    transform: 'rotateY(180deg)',
-  },
-  cardFace: {
-    backfaceVisibility: 'hidden',
-    display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    padding: '32px 24px',
-    borderRadius: '20px',
+    marginBottom: '20px',
   },
-  cardBack: {
-    transform: 'rotateY(180deg)',
-  },
-  frontChar: {
-    fontSize: '80px',
+  hanjaDisplay: {
+    fontSize: '72px',
     fontFamily: theme.fonts.serif,
     color: theme.colors.text,
     marginBottom: '12px',
+    textShadow: '0 2px 8px rgba(139, 92, 246, 0.3)',
   },
-  frontHint: {
-    fontSize: '14px',
-    color: theme.colors.textSecondary,
-  },
-  backMeaning: {
+  meaningDisplay: {
     fontSize: '28px',
-    fontWeight: 700,
-    color: theme.colors.accent,
-    marginBottom: '8px',
-    fontFamily: theme.fonts.sans,
+    fontFamily: theme.fonts.serif,
+    color: '#8b5cf6',
+    marginBottom: '12px',
   },
-  backLevel: {
-    fontSize: '13px',
+  questionText: {
+    fontSize: '16px',
     color: theme.colors.textSecondary,
-    marginBottom: '16px',
-  },
-  backExamples: {
-    fontSize: '15px',
-    color: theme.colors.text,
+    marginBottom: '24px',
     textAlign: 'center',
-    lineHeight: '1.6',
   },
-  actions: {
-    display: 'flex',
-    gap: '12px',
+  optionsContainer: {
     width: '100%',
-    maxWidth: '340px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
   },
-  knowBtn: {
-    flex: 1,
-    padding: '14px',
+  optionBtn: {
+    width: '100%',
+    minHeight: '56px',
+    padding: '14px 16px',
     borderRadius: '12px',
-    fontSize: '16px',
+    fontSize: '18px',
     fontWeight: 600,
     cursor: 'pointer',
-    border: 'none',
-    background: theme.colors.success,
-    color: '#fff',
+    border: `2px solid ${theme.colors.secondary}`,
+    background: theme.colors.surface,
+    color: theme.colors.text,
     fontFamily: theme.fonts.sans,
-    minHeight: theme.sizes.touchTarget,
+    textAlign: 'center',
+    transition: 'all 0.2s',
   },
-  dontKnowBtn: {
-    flex: 1,
-    padding: '14px',
+  nextBtn: {
+    width: '100%',
+    minHeight: '56px',
+    padding: '14px 16px',
     borderRadius: '12px',
-    fontSize: '16px',
-    fontWeight: 600,
+    fontSize: '18px',
+    fontWeight: 700,
     cursor: 'pointer',
     border: 'none',
-    background: theme.colors.error,
-    color: '#fff',
+    background: '#8b5cf6',
+    color: 'white',
     fontFamily: theme.fonts.sans,
-    minHeight: theme.sizes.touchTarget,
+    textAlign: 'center',
+    marginTop: '20px',
+    boxShadow: '0 4px 12px rgba(139, 92, 246, 0.4)',
+  },
+  feedbackCorrect: {
+    background: theme.colors.success + '20',
+    borderColor: theme.colors.success,
+    color: theme.colors.success,
+  },
+  feedbackWrong: {
+    background: theme.colors.error + '20',
+    borderColor: theme.colors.error,
+    color: theme.colors.error,
+  },
+  exampleBox: {
+    width: '100%',
+    background: theme.colors.surface,
+    borderRadius: '12px',
+    padding: '12px 16px',
+    marginTop: '12px',
+    borderLeft: `3px solid #8b5cf6`,
+  },
+  exampleLabel: {
+    fontSize: '12px',
+    color: theme.colors.textSecondary,
+    marginBottom: '4px',
+  },
+  exampleText: {
+    fontSize: '14px',
+    color: theme.colors.text,
+  },
+  emptyContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '60vh',
+    textAlign: 'center',
+    padding: '24px',
+  },
+  emptyEmoji: {
+    fontSize: '64px',
+    marginBottom: '24px',
+  },
+  emptyTitle: {
+    fontSize: '24px',
+    fontWeight: 'bold',
+    color: theme.colors.text,
+    marginBottom: '12px',
+  },
+  emptyDesc: {
+    fontSize: '16px',
+    color: theme.colors.textSecondary,
+    lineHeight: '1.5',
+    marginBottom: '32px',
   },
   resultContainer: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '32px 16px',
+    padding: '40px 16px',
     textAlign: 'center',
     minHeight: 'calc(100vh - 64px)',
   },
-  resultEmoji: {
+  resultScore: {
     fontSize: '48px',
-    marginBottom: '16px',
+    fontWeight: 700,
+    color: '#8b5cf6',
+    fontFamily: theme.fonts.display,
+    marginBottom: '8px',
   },
   resultTitle: {
     fontSize: '28px',
     fontWeight: 700,
     fontFamily: theme.fonts.display,
     color: theme.colors.text,
-    marginBottom: '20px',
-  },
-  resultStats: {
-    display: 'flex',
-    gap: '24px',
-    marginBottom: '24px',
-  },
-  resultStatItem: {
-    textAlign: 'center',
-  },
-  resultStatValue: {
-    fontSize: '28px',
-    fontWeight: 700,
-    fontFamily: theme.fonts.display,
-  },
-  resultStatLabel: {
-    fontSize: '13px',
-    color: theme.colors.textSecondary,
-    marginTop: '4px',
-  },
-  unknownSection: {
-    width: '100%',
-    maxWidth: '340px',
-    marginBottom: '24px',
-  },
-  unknownTitle: {
-    fontSize: '15px',
-    fontWeight: 700,
-    color: theme.colors.text,
     marginBottom: '12px',
-    textAlign: 'left',
   },
-  unknownItem: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '10px 14px',
-    background: theme.colors.surface,
-    borderRadius: '10px',
-    marginBottom: '6px',
-  },
-  unknownChar: {
-    fontSize: '24px',
-    fontFamily: theme.fonts.serif,
-    color: theme.colors.text,
-  },
-  unknownMeaning: {
-    fontSize: '14px',
-    color: theme.colors.textSecondary,
-  },
-  resultBtns: {
-    display: 'flex',
-    gap: '12px',
-    width: '100%',
-    maxWidth: '340px',
-  },
-  retryBtn: {
-    flex: 1,
-    padding: '14px',
-    borderRadius: '12px',
+  resultDetail: {
     fontSize: '16px',
-    fontWeight: 600,
-    cursor: 'pointer',
-    border: `2px solid ${theme.colors.primary}`,
-    background: 'transparent',
-    color: theme.colors.primary,
-    fontFamily: theme.fonts.sans,
-    minHeight: theme.sizes.touchTarget,
+    color: theme.colors.textSecondary,
+    marginBottom: '32px',
   },
   homeBtn: {
-    flex: 1,
+    width: '100%',
+    maxWidth: '300px',
     padding: '14px',
     borderRadius: '12px',
     fontSize: '16px',
     fontWeight: 600,
     cursor: 'pointer',
     border: 'none',
-    background: theme.colors.primary,
-    color: theme.colors.text,
+    background: '#8b5cf6',
+    color: 'white',
     fontFamily: theme.fonts.sans,
     minHeight: theme.sizes.touchTarget,
   },
 };
 
+const QUESTION_LABELS = [
+  '이 한자의 뜻과 음은?',
+  '이 뜻음에 해당하는 한자는?',
+  '이 한자의 음(소리)은?',
+];
+
+function getOptionLabel(item, type) {
+  if (type === 0) return `${item.meaning} ${item.sound}`;
+  if (type === 1) return item.char;
+  return item.sound;
+}
+
 export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound, onCharResult, charMastery }) {
   const { addXP } = gameState;
-  const [charList, setCharList] = useState([]);
+  const [questions, setQuestions] = useState([]);
   const [currentIdx, setCurrentIdx] = useState(0);
-  const [flipped, setFlipped] = useState(false);
-  const [known, setKnown] = useState([]);
-  const [unknown, setUnknown] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [isCorrect, setIsCorrect] = useState(null);
+  const [totalCorrect, setTotalCorrect] = useState(0);
   const [finished, setFinished] = useState(false);
-  const [reviewMode, setReviewMode] = useState('smart'); // 'smart' (틀린거 위주) or 'all'
+  
+  // 데이터 로딩 상태 (처음 한번만 실행)
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  const initReview = useCallback((pool, mode = 'smart') => {
-    let list = [];
-
-    if (mode === 'smart' && charMastery) {
-      // 1. 틀린 적이 있는 한자 (오답 횟수 내림차순)
-      const wrongItems = pool.filter(item => {
-        const stats = charMastery[item.char];
-        return stats && stats.wrong > 0;
-      }).sort((a, b) => {
-        const statsA = charMastery[a.char];
-        const statsB = charMastery[b.char];
-        // 틀린 횟수가 많을수록, 정답률이 낮을수록 우선
-        const rateA = statsA.correct / (statsA.correct + statsA.wrong);
-        const rateB = statsB.correct / (statsB.correct + statsB.wrong);
-        if (rateA !== rateB) return rateA - rateB; // 낮은 정답률 우선
-        return statsB.wrong - statsA.wrong; // 많은 오답 우선
-      });
-
-      // 2. 아직 안 풀어본 한자 or 정답률이 낮은 한자 섞기
-      const otherItems = pool.filter(item => !wrongItems.includes(item));
-      const shuffledOthers = shuffle(otherItems);
-
-      // 3. 조합 (틀린거 우선, 모자르면 나머지 채우기)
-      // 틀린 문제가 너무 많으면 그것만으로 20개 채움
-      list = [...wrongItems, ...shuffledOthers].slice(0, TOTAL_COUNT);
-      
-      // 마지막으로 순서를 살짝 섞어줌 (너무 정렬되어 있으면 지루함)
-      // 단, 틀린게 너무 뒤로 가지 않게 가중치 셔플을 하거나 그냥 둠. 
-      // 여기선 학습 효과를 위해 그냥 둠 (틀린거 먼저 빡세게!)
-    } else {
-      list = shuffle(pool).slice(0, TOTAL_COUNT);
-    }
-
-    setCharList(list);
-    setCurrentIdx(0);
-    setFlipped(false);
-    setKnown([]);
-    setUnknown([]);
-    setFinished(false);
-    setReviewMode(mode);
-  }, [charMastery]);
-
+  // 문제 생성 로직
   useEffect(() => {
-    initReview(hanjaPool, 'smart');
-  }, [hanjaPool, initReview]);
+    if (isLoaded) return; // 이미 로드했으면 스킵
 
-  const goNext = useCallback(() => {
-    if (currentIdx + 1 >= charList.length) {
-      setFinished(true);
-    } else {
-      setCurrentIdx((prev) => prev + 1);
-      setFlipped(false);
+    // 1. 틀린 적 있는 문제 필터링
+    const wrongItems = hanjaPool.filter(item => {
+      const stats = charMastery[item.char];
+      return stats && stats.wrong > 0;
+    });
+
+    if (wrongItems.length === 0) {
+      setQuestions([]);
+      setIsLoaded(true);
+      return;
     }
-  }, [currentIdx, charList.length]);
 
-  const handleKnow = useCallback(() => {
-    playSound('correct');
-    addXP(3);
-    if (onCharResult) onCharResult(charList[currentIdx].char, true);
-    setKnown((prev) => [...prev, charList[currentIdx]]);
-    goNext();
-  }, [playSound, addXP, charList, currentIdx, goNext, onCharResult]);
+    // 2. 정답률 낮은 순으로 정렬 (정답률 같으면 오답 수 많은 순)
+    wrongItems.sort((a, b) => {
+      const statsA = charMastery[a.char];
+      const statsB = charMastery[b.char];
+      const rateA = statsA.correct / (statsA.correct + statsA.wrong);
+      const rateB = statsB.correct / (statsB.correct + statsB.wrong);
+      
+      if (rateA !== rateB) return rateA - rateB; // 낮은 정답률 우선
+      return statsB.wrong - statsA.wrong; // 많은 오답 우선
+    });
 
-  const handleDontKnow = useCallback(() => {
-    playSound('click');
-    if (onCharResult) onCharResult(charList[currentIdx].char, false);
-    setUnknown((prev) => [...prev, charList[currentIdx]]);
-    goNext();
-  }, [playSound, charList, currentIdx, goNext, onCharResult]);
+    // 3. 최대 20개까지만 자르기
+    const targetItems = wrongItems.slice(0, MAX_REVIEW_COUNT);
 
-  const handleFlip = useCallback(() => {
-    playSound('flip');
-    setFlipped((prev) => !prev);
-  }, [playSound]);
+    // 4. 퀴즈 생성
+    const newQuestions = targetItems.map(correct => {
+      const type = Math.floor(Math.random() * 3); // 0~2 (객관식만)
+      
+      // 오답 보기 생성 (전체 풀에서 정답 제외하고 랜덤 3개)
+      const others = hanjaPool.filter(item => item.char !== correct.char);
+      const wrongAnswers = shuffle(others).slice(0, 3);
+      const options = shuffle([correct, ...wrongAnswers]);
 
-  const handleRetryUnknown = useCallback(() => {
-    if (unknown.length > 0) {
-      // 틀린 것만 다시 복습 (단순 셔플)
-      const list = shuffle(unknown);
-      setCharList(list);
-      setCurrentIdx(0);
-      setFlipped(false);
-      setKnown([]);
-      setUnknown([]);
-      setFinished(false);
-    }
-  }, [unknown]);
+      return { correct, type, options };
+    });
 
-  // 통계 표시용 헬퍼
+    setQuestions(newQuestions);
+    setIsLoaded(true);
+  }, [hanjaPool, charMastery, isLoaded]);
+
+  // 통계 텍스트 생성
   const getStatsText = (char) => {
     const stats = charMastery[char];
-    if (!stats) return '학습 기록 없음';
+    if (!stats) return '';
     const total = stats.correct + stats.wrong;
-    if (total === 0) return '학습 기록 없음';
     const percent = Math.round((stats.correct / total) * 100);
     return `정답률 ${percent}% (${stats.correct}/${total})`;
   };
 
-  if (charList.length === 0) {
+  const handleSelect = useCallback((option, idx) => {
+    if (selected !== null) return;
+    const q = questions[currentIdx];
+    const correct = option === q.correct;
+    setSelected(idx);
+    setIsCorrect(correct);
+
+    if (correct) {
+      playSound('correct');
+      setTotalCorrect(prev => prev + 1);
+      addXP(5); // 복습은 점수 조금 적게? (5점)
+    } else {
+      playSound('wrong');
+    }
+
+    // 결과 기록 (복습 퀴즈도 통계에 반영!)
+    if (onCharResult) onCharResult(q.correct.char, correct);
+
+  }, [selected, questions, currentIdx, playSound, addXP, onCharResult]);
+
+  const handleNextQuestion = useCallback(() => {
+    if (currentIdx + 1 >= questions.length) {
+      setFinished(true);
+    } else {
+      setCurrentIdx(prev => prev + 1);
+      setSelected(null);
+      setIsCorrect(null);
+    }
+  }, [currentIdx, questions.length]);
+
+  // 복습할 게 없을 때
+  if (isLoaded && questions.length === 0) {
     return (
-      <div style={styles.container}>
-        <div style={{ color: theme.colors.textSecondary, fontSize: '16px', marginTop: '40px' }}>
-          한자 데이터가 부족합니다
+      <div style={styles.emptyContainer}>
+        <div style={styles.emptyEmoji}>🎉</div>
+        <div style={styles.emptyTitle}>완벽합니다!</div>
+        <div style={styles.emptyDesc}>
+          틀린 문제가 하나도 없어요.<br/>
+          한자 퀴즈에 도전해서 실력을 뽐내보세요!
         </div>
+        <button style={styles.homeBtn} onClick={onHome}>홈으로</button>
       </div>
     );
   }
 
+  // 로딩 중
+  if (!isLoaded || questions.length === 0) {
+    return <div style={{...styles.container, justifyContent: 'center'}}>Loading...</div>;
+  }
+
+  // 결과 화면
   if (finished) {
+    const accuracy = Math.round((totalCorrect / questions.length) * 100);
     return (
       <div style={styles.resultContainer}>
-        <div style={styles.resultEmoji}>{'\uD83D\uDCD6'}</div>
+        <div style={styles.resultScore}>{totalCorrect} / {questions.length}</div>
         <div style={styles.resultTitle}>복습 완료!</div>
-        <div style={styles.resultStats}>
-          <div style={styles.resultStatItem}>
-            <div style={{ ...styles.resultStatValue, color: theme.colors.success }}>
-              {known.length}
-            </div>
-            <div style={styles.resultStatLabel}>알아요</div>
-          </div>
-          <div style={styles.resultStatItem}>
-            <div style={{ ...styles.resultStatValue, color: theme.colors.error }}>
-              {unknown.length}
-            </div>
-            <div style={styles.resultStatLabel}>모르겠어요</div>
-          </div>
+        <div style={styles.resultDetail}>
+          정답률 {accuracy}%<br/>
+          약점을 보완하셨네요! 👏
         </div>
-
-        {unknown.length > 0 && (
-          <div style={styles.unknownSection}>
-            <div style={styles.unknownTitle}>모르는 한자</div>
-            {unknown.map((h, i) => (
-              <div key={i} style={styles.unknownItem}>
-                <span style={styles.unknownChar}>{h.char}</span>
-                <span style={styles.unknownMeaning}>{h.meaning} {h.sound}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div style={styles.resultBtns}>
-          {unknown.length > 0 && (
-            <button style={styles.retryBtn} onClick={handleRetryUnknown}>
-              틀린 문제 다시 보기
-            </button>
-          )}
-          <button style={styles.homeBtn} onClick={onHome}>홈으로</button>
-        </div>
+        <button style={styles.homeBtn} onClick={onHome}>홈으로</button>
       </div>
     );
   }
 
-  const current = charList[currentIdx];
+  const q = questions[currentIdx];
+  const progressPercent = ((currentIdx) / questions.length) * 100;
 
   return (
     <div style={styles.container}>
+      <div style={styles.progressBar}>
+        <div style={{ ...styles.progressFill, width: `${progressPercent}%` }} />
+      </div>
+      
       <div style={styles.progressText}>
-        {currentIdx + 1} / {charList.length}
+        <span>{currentIdx + 1} / {questions.length}</span>
       </div>
 
       <div style={styles.statsBadge}>
-        {getStatsText(current.char)}
+        {getStatsText(q.correct.char)}
       </div>
 
-      <div style={styles.cardWrapper} onClick={handleFlip}>
-        <div style={{ ...styles.card, ...(flipped ? styles.cardFlipped : {}) }}>
-          <div style={styles.cardFace}>
-            <div style={styles.frontChar}>{current.char}</div>
-            <div style={styles.frontHint}>탭하여 뒤집기</div>
+      <div style={styles.questionArea}>
+        {q.type === 1 ? (
+          <div style={styles.meaningDisplay}>{q.correct.meaning} {q.correct.sound}</div>
+        ) : (
+          <div style={styles.hanjaDisplay}>{q.correct.char}</div>
+        )}
+        <div style={styles.questionText}>{QUESTION_LABELS[q.type]}</div>
+      </div>
+
+      <div style={styles.optionsContainer}>
+        {q.options.map((opt, idx) => {
+          let btnStyle = { ...styles.optionBtn };
+          if (selected !== null) {
+            if (opt === q.correct) {
+              btnStyle = { ...btnStyle, ...styles.feedbackCorrect };
+            } else if (idx === selected && !isCorrect) {
+              btnStyle = { ...btnStyle, ...styles.feedbackWrong };
+            }
+          }
+          return (
+            <button
+              key={idx}
+              style={btnStyle}
+              onClick={() => handleSelect(opt, idx)}
+              disabled={selected !== null}
+            >
+              {getOptionLabel(opt, q.type)}
+            </button>
+          );
+        })}
+      </div>
+
+      {selected !== null && (
+        <button style={styles.nextBtn} onClick={handleNextQuestion}>
+          다음 문제 ▶
+        </button>
+      )}
+
+      {selected !== null && !isCorrect && (
+        <div style={{ ...styles.exampleBox, borderLeftColor: theme.colors.error }}>
+          <div style={styles.exampleLabel}>
+            정답: {q.correct.char} ({q.correct.meaning} {q.correct.sound})
           </div>
-          <div style={{ ...styles.cardFace, ...styles.cardBack }}>
-            <div style={styles.backMeaning}>{current.meaning} {current.sound}</div>
-            <div style={styles.backLevel}>{current.level}</div>
-            {current.examples && current.examples.length > 0 && (
-              <div style={styles.backExamples}>
-                {current.examples.join(', ')}
-              </div>
-            )}
-          </div>
+          {q.correct.examples && q.correct.examples.length > 0 && (
+            <div style={styles.exampleText}>
+              예시: {q.correct.examples.slice(0, 2).join(', ')}
+            </div>
+          )}
         </div>
-      </div>
-
-      <div style={styles.actions}>
-        <button style={styles.knowBtn} onClick={handleKnow}>
-          {'알아요 \u2705'}
-        </button>
-        <button style={styles.dontKnowBtn} onClick={handleDontKnow}>
-          {'모르겠어요 \u274C'}
-        </button>
-      </div>
+      )}
     </div>
   );
 }
