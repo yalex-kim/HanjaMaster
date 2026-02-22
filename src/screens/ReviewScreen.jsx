@@ -15,9 +15,19 @@ const styles = {
   progressText: {
     fontSize: '13px',
     color: theme.colors.textSecondary,
-    marginBottom: '20px',
+    marginBottom: '10px',
     width: '100%',
     textAlign: 'center',
+  },
+  statsBadge: {
+    background: theme.colors.surface,
+    padding: '4px 12px',
+    borderRadius: '12px',
+    fontSize: '13px',
+    fontWeight: 'bold',
+    color: theme.colors.accent,
+    marginBottom: '16px',
+    border: `1px solid ${theme.colors.secondary}`,
   },
   cardWrapper: {
     flex: 1,
@@ -229,7 +239,7 @@ const styles = {
   },
 };
 
-export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound, onCharResult }) {
+export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound, onCharResult, charMastery }) {
   const { addXP } = gameState;
   const [charList, setCharList] = useState([]);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -237,20 +247,52 @@ export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound, 
   const [known, setKnown] = useState([]);
   const [unknown, setUnknown] = useState([]);
   const [finished, setFinished] = useState(false);
-  const [reviewMode, setReviewMode] = useState('all');
+  const [reviewMode, setReviewMode] = useState('smart'); // 'smart' (틀린거 위주) or 'all'
 
-  const initReview = useCallback((pool) => {
-    const list = shuffle(pool).slice(0, TOTAL_COUNT);
+  const initReview = useCallback((pool, mode = 'smart') => {
+    let list = [];
+
+    if (mode === 'smart' && charMastery) {
+      // 1. 틀린 적이 있는 한자 (오답 횟수 내림차순)
+      const wrongItems = pool.filter(item => {
+        const stats = charMastery[item.char];
+        return stats && stats.wrong > 0;
+      }).sort((a, b) => {
+        const statsA = charMastery[a.char];
+        const statsB = charMastery[b.char];
+        // 틀린 횟수가 많을수록, 정답률이 낮을수록 우선
+        const rateA = statsA.correct / (statsA.correct + statsA.wrong);
+        const rateB = statsB.correct / (statsB.correct + statsB.wrong);
+        if (rateA !== rateB) return rateA - rateB; // 낮은 정답률 우선
+        return statsB.wrong - statsA.wrong; // 많은 오답 우선
+      });
+
+      // 2. 아직 안 풀어본 한자 or 정답률이 낮은 한자 섞기
+      const otherItems = pool.filter(item => !wrongItems.includes(item));
+      const shuffledOthers = shuffle(otherItems);
+
+      // 3. 조합 (틀린거 우선, 모자르면 나머지 채우기)
+      // 틀린 문제가 너무 많으면 그것만으로 20개 채움
+      list = [...wrongItems, ...shuffledOthers].slice(0, TOTAL_COUNT);
+      
+      // 마지막으로 순서를 살짝 섞어줌 (너무 정렬되어 있으면 지루함)
+      // 단, 틀린게 너무 뒤로 가지 않게 가중치 셔플을 하거나 그냥 둠. 
+      // 여기선 학습 효과를 위해 그냥 둠 (틀린거 먼저 빡세게!)
+    } else {
+      list = shuffle(pool).slice(0, TOTAL_COUNT);
+    }
+
     setCharList(list);
     setCurrentIdx(0);
     setFlipped(false);
     setKnown([]);
     setUnknown([]);
     setFinished(false);
-  }, []);
+    setReviewMode(mode);
+  }, [charMastery]);
 
   useEffect(() => {
-    initReview(hanjaPool);
+    initReview(hanjaPool, 'smart');
   }, [hanjaPool, initReview]);
 
   const goNext = useCallback(() => {
@@ -268,14 +310,14 @@ export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound, 
     if (onCharResult) onCharResult(charList[currentIdx].char, true);
     setKnown((prev) => [...prev, charList[currentIdx]]);
     goNext();
-  }, [playSound, addXP, charList, currentIdx, goNext]);
+  }, [playSound, addXP, charList, currentIdx, goNext, onCharResult]);
 
   const handleDontKnow = useCallback(() => {
     playSound('click');
     if (onCharResult) onCharResult(charList[currentIdx].char, false);
     setUnknown((prev) => [...prev, charList[currentIdx]]);
     goNext();
-  }, [playSound, charList, currentIdx, goNext]);
+  }, [playSound, charList, currentIdx, goNext, onCharResult]);
 
   const handleFlip = useCallback(() => {
     playSound('flip');
@@ -284,10 +326,26 @@ export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound, 
 
   const handleRetryUnknown = useCallback(() => {
     if (unknown.length > 0) {
-      setReviewMode('unknown');
-      initReview(unknown);
+      // 틀린 것만 다시 복습 (단순 셔플)
+      const list = shuffle(unknown);
+      setCharList(list);
+      setCurrentIdx(0);
+      setFlipped(false);
+      setKnown([]);
+      setUnknown([]);
+      setFinished(false);
     }
-  }, [unknown, initReview]);
+  }, [unknown]);
+
+  // 통계 표시용 헬퍼
+  const getStatsText = (char) => {
+    const stats = charMastery[char];
+    if (!stats) return '학습 기록 없음';
+    const total = stats.correct + stats.wrong;
+    if (total === 0) return '학습 기록 없음';
+    const percent = Math.round((stats.correct / total) * 100);
+    return `정답률 ${percent}% (${stats.correct}/${total})`;
+  };
 
   if (charList.length === 0) {
     return (
@@ -334,7 +392,7 @@ export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound, 
         <div style={styles.resultBtns}>
           {unknown.length > 0 && (
             <button style={styles.retryBtn} onClick={handleRetryUnknown}>
-              모르는 한자 복습
+              틀린 문제 다시 보기
             </button>
           )}
           <button style={styles.homeBtn} onClick={onHome}>홈으로</button>
@@ -349,6 +407,10 @@ export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound, 
     <div style={styles.container}>
       <div style={styles.progressText}>
         {currentIdx + 1} / {charList.length}
+      </div>
+
+      <div style={styles.statsBadge}>
+        {getStatsText(current.char)}
       </div>
 
       <div style={styles.cardWrapper} onClick={handleFlip}>

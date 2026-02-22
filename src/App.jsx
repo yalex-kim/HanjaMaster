@@ -108,6 +108,7 @@ function App() {
       gameState,
       playSound,
       onCharResult: handleCharResult,
+      charMastery, // 복습 모드 등에서 통계 활용
     };
 
     switch (screen) {
