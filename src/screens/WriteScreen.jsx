@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { theme } from '../styles/theme.js';
 import WritingCanvas from '../components/WritingCanvas.jsx';
+import { shuffle } from '../utils/shuffle.js';
 
 const styles = {
   container: {
@@ -57,31 +58,40 @@ const styles = {
 };
 
 export default function WriteScreen({ hanjaPool, onHome, playSound, onCharResult }) {
+  const [shuffledPool, setShuffledPool] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [currentItem, setCurrentItem] = useState(hanjaPool[0]);
+  const [currentItem, setCurrentItem] = useState(null);
 
+  // 초기화 및 랜덤 셔플
   useEffect(() => {
-    // 셔플된 풀이나 순차적 풀 사용
-    setCurrentItem(hanjaPool[currentIndex % hanjaPool.length]);
-  }, [currentIndex, hanjaPool]);
+    setShuffledPool(shuffle([...hanjaPool]));
+    setCurrentIndex(0);
+  }, [hanjaPool]);
+
+  // 현재 아이템 설정
+  useEffect(() => {
+    if (shuffledPool.length > 0) {
+      setCurrentItem(shuffledPool[currentIndex % shuffledPool.length]);
+    }
+  }, [currentIndex, shuffledPool]);
 
   const handleNext = () => {
     playSound('click');
-    setCurrentIndex((prev) => (prev + 1) % hanjaPool.length);
+    // 무한 루프처럼 셔플된 풀을 순환 (랜덤성 유지)
+    setCurrentIndex((prev) => prev + 1);
   };
 
   const handleComplete = (summary) => {
-    // 쓰기 성공 시 처리 (예: 효과음, 경험치 등)
-    // summary: { totalMistakes, ... }
+    // 쓰기 성공 시 처리
     if (summary.totalMistakes < 3) {
       playSound('correct');
-      // 결과 기록 (쓰기는 정답/오답 개념이 모호하지만 완료하면 성공으로 간주)
       if (onCharResult) onCharResult(currentItem.char, true);
     } else {
-      // 실수가 많으면 별도 효과음?
       playSound('wrong'); 
     }
   };
+
+  if (!currentItem) return <div>Loading...</div>;
 
   return (
     <div style={styles.container}>
@@ -98,7 +108,7 @@ export default function WriteScreen({ hanjaPool, onHome, playSound, onCharResult
       </div>
 
       <button style={styles.nextBtn} onClick={handleNext}>
-        다음 한자 (Next) ▶
+        다음 한자 (랜덤) ▶
       </button>
       
       <button style={styles.homeBtn} onClick={onHome}>

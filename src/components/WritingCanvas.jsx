@@ -62,11 +62,17 @@ const styles = {
   }
 };
 
-export default function WritingCanvas({ char, width = 280, height = 280, onComplete }) {
+export default function WritingCanvas({ char, width = 280, height = 280, onComplete, maxAnimateCount = null }) {
   const writerRef = useRef(null);
   const writerInstance = useRef(null);
   const [status, setStatus] = useState({ text: '준비', type: 'normal' });
   const [isQuizMode, setIsQuizMode] = useState(false);
+  const [animateCount, setAnimateCount] = useState(0);
+
+  useEffect(() => {
+    // 한자가 바뀌면 카운트 초기화
+    setAnimateCount(0);
+  }, [char]);
 
   useEffect(() => {
     if (!writerRef.current || !char) return;
@@ -109,9 +115,19 @@ export default function WritingCanvas({ char, width = 280, height = 280, onCompl
 
   const handleAnimate = () => {
     if (!writerInstance.current) return;
+    
+    // 최대 횟수 제한 체크
+    if (maxAnimateCount !== null && animateCount >= maxAnimateCount) {
+      setStatus({ text: `획순 보기는 ${maxAnimateCount}회만 가능합니다!`, type: 'error' });
+      return;
+    }
+
     setIsQuizMode(false);
     writerInstance.current.animateCharacter({
-      onComplete: () => setStatus({ text: '획순 보기 완료', type: 'normal' })
+      onComplete: () => {
+        setStatus({ text: '획순 보기 완료', type: 'normal' });
+        setAnimateCount(prev => prev + 1);
+      }
     });
   };
 
@@ -159,8 +175,17 @@ export default function WritingCanvas({ char, width = 280, height = 280, onCompl
       </div>
 
       <div style={styles.controls}>
-        <button style={{ ...styles.button, ...styles.animateBtn }} onClick={handleAnimate}>
-          ▶ 획순 보기
+        <button 
+          style={{ 
+            ...styles.button, 
+            ...styles.animateBtn,
+            opacity: (maxAnimateCount !== null && animateCount >= maxAnimateCount) ? 0.5 : 1,
+            cursor: (maxAnimateCount !== null && animateCount >= maxAnimateCount) ? 'not-allowed' : 'pointer'
+          }} 
+          onClick={handleAnimate}
+          disabled={maxAnimateCount !== null && animateCount >= maxAnimateCount}
+        >
+          {maxAnimateCount !== null ? `▶ 획순 보기 (${maxAnimateCount - animateCount}회 남음)` : '▶ 획순 보기'}
         </button>
         <button style={{ ...styles.button, ...styles.quizBtn }} onClick={handleQuiz}>
           ✍️ 따라 쓰기

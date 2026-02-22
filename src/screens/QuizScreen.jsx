@@ -360,7 +360,8 @@ export default function QuizScreen({ hanjaPool, onHome, gameState, playSound, on
               char={q.correct.char} 
               width={280} 
               height={280} 
-              onComplete={handleWritingComplete} 
+              onComplete={handleWritingComplete}
+              maxAnimateCount={1}
             />
           ) : (
             // Writing Finished State
@@ -404,10 +405,10 @@ export default function QuizScreen({ hanjaPool, onHome, gameState, playSound, on
       )}
 
       {/* Feedback / Example Box */}
-      {selected !== null && !isCorrect && !isWritingQuestion && (
-        <div style={styles.exampleBox}>
+      {selected !== null && !isWritingQuestion && (
+        <div style={{ ...styles.exampleBox, borderLeftColor: isCorrect ? theme.colors.success : theme.colors.accent }}>
           <div style={styles.exampleLabel}>
-            정답: {q.correct.char} ({q.correct.meaning} {q.correct.sound})
+            {isCorrect ? '정답!' : '오답 노트'} : {q.correct.char} ({q.correct.meaning} {q.correct.sound})
           </div>
           {q.correct.examples && q.correct.examples.length > 0 && (
             <div style={styles.exampleText}>
