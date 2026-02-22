@@ -138,6 +138,7 @@ export default function WritingCanvas({ char, width = 280, height = 280, onCompl
     setStatus({ text: '쓰기 연습 시작!', type: 'normal' });
     
     writerInstance.current.quiz({
+      drawingWidth: 20, // 퀴즈 모드 시작할 때 굵기 강제 적용
       onMistake: (strokeData) => {
         setStatus({ text: '앗! 다시 그어보세요.', type: 'error' });
       },
