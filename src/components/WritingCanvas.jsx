@@ -1,6 +1,6 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
+import HanziWriter from 'hanzi-writer';
 import { theme } from '../styles/theme.js';
-import { useCanvas } from '../hooks/useCanvas.js';
 
 const styles = {
   container: {
@@ -9,20 +9,21 @@ const styles = {
     alignItems: 'center',
     gap: '12px',
   },
-  canvas: {
+  writerWrapper: {
     background: theme.colors.surface,
     borderRadius: '12px',
     border: `2px solid ${theme.colors.secondary}`,
-    touchAction: 'none',
-    cursor: 'crosshair',
+    overflow: 'hidden',
+    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
   },
   controls: {
     display: 'flex',
     gap: '8px',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
   },
   button: {
     minWidth: theme.sizes.touchTarget,
-    minHeight: theme.sizes.touchTarget,
     padding: '8px 16px',
     borderRadius: '8px',
     fontSize: '14px',
@@ -31,92 +32,139 @@ const styles = {
     border: 'none',
     fontFamily: theme.fonts.sans,
     color: theme.colors.text,
+    transition: 'all 0.2s',
   },
-  clearBtn: {
+  animateBtn: {
+    background: theme.colors.primary,
+    color: 'white',
+  },
+  quizBtn: {
+    background: theme.colors.accent,
+    color: 'white',
+  },
+  outlineBtn: {
     background: theme.colors.secondary,
   },
-  hintBtn: {
-    background: theme.colors.cardBack,
-    border: `1px solid ${theme.colors.accent}`,
-    color: theme.colors.accent,
-  },
-  strokeInfo: {
+  status: {
+    height: '24px',
     fontSize: '14px',
+    fontWeight: 'bold',
     color: theme.colors.textSecondary,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
   },
+  success: {
+    color: theme.colors.success,
+  },
+  error: {
+    color: theme.colors.error,
+  }
 };
 
-export default function WritingCanvas({ char, width = 280, height = 280, onStrokeComplete }) {
-  const canvasRef = useRef(null);
-  const {
-    initCanvas,
-    startStroke,
-    continueStroke,
-    endStroke,
-    showHint,
-    clearCanvas,
-    strokeCount,
-  } = useCanvas();
-
-  const ctxRef = useRef(null);
+export default function WritingCanvas({ char, width = 280, height = 280, onComplete }) {
+  const writerRef = useRef(null);
+  const writerInstance = useRef(null);
+  const [status, setStatus] = useState({ text: '준비', type: 'normal' });
+  const [isQuizMode, setIsQuizMode] = useState(false);
 
   useEffect(() => {
-    const ctx = initCanvas(canvasRef, width, height);
-    ctxRef.current = ctx;
-  }, [initCanvas, width, height]);
+    if (!writerRef.current || !char) return;
 
-  const handlePointerDown = useCallback((e) => {
-    e.preventDefault();
-    startStroke(e, canvasRef);
-  }, [startStroke]);
+    // 기존 인스턴스 정리 없음 (HanziWriter는 DOM을 직접 조작하므로 innerHTML 초기화가 편함)
+    writerRef.current.innerHTML = '';
 
-  const handlePointerMove = useCallback((e) => {
-    e.preventDefault();
-    continueStroke(e, canvasRef);
-  }, [continueStroke]);
+    try {
+      writerInstance.current = HanziWriter.create(writerRef.current, char, {
+        width,
+        height,
+        padding: 20,
+        showOutline: true,
+        strokeAnimationSpeed: 1,
+        delayBetweenStrokes: 200,
+        strokeColor: theme.colors.text,
+        radicalColor: theme.colors.accent,
+        googlePolyfill: true, // 구글 폰트 데이터 백업 사용
+        charDataLoader: (char, onComplete) => {
+          fetch(`https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0/${char}.json`)
+            .then(res => res.json())
+            .then(onComplete)
+            .catch(() => {
+              setStatus({ text: '데이터 로드 실패', type: 'error' });
+            });
+        }
+      });
 
-  const handlePointerUp = useCallback(() => {
-    endStroke();
-    if (onStrokeComplete) onStrokeComplete(strokeCount + 1);
-  }, [endStroke, onStrokeComplete, strokeCount]);
+      // 로드 완료 후 퀴즈 모드 자동 시작 (선택 사항)
+      // writerInstance.current.quiz();
+      setStatus({ text: '따라 써보세요!', type: 'normal' });
 
-  const handleClear = useCallback(() => {
-    clearCanvas(ctxRef.current, canvasRef);
-  }, [clearCanvas]);
-
-  const handleHint = useCallback(() => {
-    if (ctxRef.current && char) {
-      showHint(ctxRef.current, char, width, height);
+    } catch (err) {
+      console.error(err);
+      setStatus({ text: '오류 발생', type: 'error' });
     }
-  }, [showHint, char, width, height]);
+
+  }, [char, width, height]);
+
+  const handleAnimate = () => {
+    if (!writerInstance.current) return;
+    setIsQuizMode(false);
+    writerInstance.current.animateCharacter({
+      onComplete: () => setStatus({ text: '획순 보기 완료', type: 'normal' })
+    });
+  };
+
+  const handleQuiz = () => {
+    if (!writerInstance.current) return;
+    setIsQuizMode(true);
+    setStatus({ text: '쓰기 연습 시작!', type: 'normal' });
+    
+    writerInstance.current.quiz({
+      onMistake: (strokeData) => {
+        setStatus({ text: '앗! 다시 그어보세요.', type: 'error' });
+      },
+      onCorrectStroke: (strokeData) => {
+        setStatus({ text: `좋아요! (${strokeData.strokeNum}/${strokeData.totalStrokes})`, type: 'normal' });
+      },
+      onComplete: (summary) => {
+        setStatus({ text: '참 잘했어요! 🎉', type: 'success' });
+        if (onComplete) onComplete(summary);
+      }
+    });
+  };
+
+  const toggleOutline = () => {
+    if (!writerInstance.current) return;
+    const data = writerInstance.current._options; // 내부 옵션 접근 (API에 hideOutline/showOutline이 있음)
+    // HanziWriter API: hideOutline(), showOutline()
+    // 현재 상태를 알기 어려우므로 토글 로직 구현
+    // 간단히: 항상 껐다 켰다 하기보다 버튼을 분리하거나 상태관리 필요.
+    // 여기서는 "힌트 끄기/켜기"로 구현
+    // _options.showOutline은 초기값일 뿐.
+    
+    // 강제로 show/hide
+    // writerInstance.current.hideOutline();
+    // writerInstance.current.showOutline();
+  };
 
   return (
     <div style={styles.container}>
-      <canvas
-        ref={canvasRef}
-        style={{ ...styles.canvas, width, height }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
-      />
+      <div ref={writerRef} style={{ ...styles.writerWrapper, width, height }} />
+      
+      <div style={styles.status}>
+        <span style={status.type === 'success' ? styles.success : status.type === 'error' ? styles.error : {}}>
+          {status.text}
+        </span>
+      </div>
+
       <div style={styles.controls}>
-        <button
-          style={{ ...styles.button, ...styles.clearBtn }}
-          onClick={handleClear}
-        >
-          지우기
+        <button style={{ ...styles.button, ...styles.animateBtn }} onClick={handleAnimate}>
+          ▶ 획순 보기
         </button>
-        <button
-          style={{ ...styles.button, ...styles.hintBtn }}
-          onClick={handleHint}
-        >
-          힌트
+        <button style={{ ...styles.button, ...styles.quizBtn }} onClick={handleQuiz}>
+          ✍️ 따라 쓰기
         </button>
       </div>
-      <span style={styles.strokeInfo}>
-        획수: {strokeCount}
-      </span>
     </div>
   );
 }

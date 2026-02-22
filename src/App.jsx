@@ -11,6 +11,7 @@ import HomeScreen from './screens/HomeScreen.jsx';
 import QuizScreen from './screens/QuizScreen.jsx';
 import ReviewScreen from './screens/ReviewScreen.jsx';
 import ProgressScreen from './screens/ProgressScreen.jsx';
+import WriteScreen from './screens/WriteScreen.jsx';
 
 const appStyles = {
   wrapper: {
@@ -112,6 +113,8 @@ function App() {
     switch (screen) {
       case 'quiz':
         return <QuizScreen {...sharedProps} />;
+      case 'write':
+        return <WriteScreen {...sharedProps} />;
       case 'review':
         return <ReviewScreen {...sharedProps} />;
       case 'progress':
