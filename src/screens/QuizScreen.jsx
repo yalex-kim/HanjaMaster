@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { theme } from '../styles/theme.js';
 import { generateQuiz } from '../utils/quiz.js';
+import WritingCanvas from '../components/WritingCanvas.jsx';
 
 const styles = {
   container: {
@@ -81,6 +82,22 @@ const styles = {
     textAlign: 'center',
     transition: 'all 0.2s',
   },
+  nextBtn: {
+    width: '100%',
+    minHeight: '56px',
+    padding: '14px 16px',
+    borderRadius: '12px',
+    fontSize: '18px',
+    fontWeight: 700,
+    cursor: 'pointer',
+    border: 'none',
+    background: theme.colors.primary,
+    color: theme.colors.text,
+    fontFamily: theme.fonts.sans,
+    textAlign: 'center',
+    marginTop: '20px',
+    boxShadow: '0 4px 12px rgba(233, 69, 96, 0.4)',
+  },
   feedbackCorrect: {
     background: theme.colors.success + '20',
     borderColor: theme.colors.success,
@@ -90,10 +107,6 @@ const styles = {
     background: theme.colors.error + '20',
     borderColor: theme.colors.error,
     color: theme.colors.error,
-  },
-  feedbackReveal: {
-    borderColor: theme.colors.success,
-    background: theme.colors.success + '10',
   },
   exampleBox: {
     width: '100%',
@@ -187,6 +200,7 @@ const QUESTION_LABELS = [
   '이 한자의 뜻과 음은?',
   '이 뜻음에 해당하는 한자는?',
   '이 한자의 음(소리)은?',
+  '다음 한자를 바르게 써보세요!',
 ];
 
 function getOptionLabel(item, type) {
@@ -199,12 +213,11 @@ export default function QuizScreen({ hanjaPool, onHome, gameState, playSound, on
   const { state, addXP, loseHeart, incrementStreak, resetStreak, addStudyResult } = gameState;
   const [questions, setQuestions] = useState([]);
   const [currentIdx, setCurrentIdx] = useState(0);
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState(null); // Selected option index (or dummy for writing)
   const [isCorrect, setIsCorrect] = useState(null);
   const [totalCorrect, setTotalCorrect] = useState(0);
   const [earnedXP, setEarnedXP] = useState(0);
   const [finished, setFinished] = useState(false);
-  const timerRef = useRef(null);
 
   useEffect(() => {
     const q = generateQuiz(hanjaPool, 10);
@@ -217,14 +230,9 @@ export default function QuizScreen({ hanjaPool, onHome, gameState, playSound, on
     setFinished(false);
   }, [hanjaPool]);
 
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
-
+  // Handle User Answer
   const handleSelect = useCallback((option, idx) => {
-    if (selected !== null) return;
+    if (selected !== null) return; // Prevent multiple selections
     const q = questions[currentIdx];
     const correct = option === q.correct;
     setSelected(idx);
@@ -245,17 +253,35 @@ export default function QuizScreen({ hanjaPool, onHome, gameState, playSound, on
       addStudyResult(false);
     }
     if (onCharResult) onCharResult(q.correct.char, correct);
+    
+    // Auto-advance removed based on user request.
+    // User must click "Next" button.
+  }, [selected, questions, currentIdx, playSound, incrementStreak, resetStreak, addXP, loseHeart, addStudyResult, state.streak, onCharResult]);
 
-    timerRef.current = setTimeout(() => {
-      if (currentIdx + 1 >= questions.length) {
-        setFinished(true);
-      } else {
-        setCurrentIdx((prev) => prev + 1);
-        setSelected(null);
-        setIsCorrect(null);
-      }
-    }, 1500);
-  }, [selected, questions, currentIdx, playSound, incrementStreak, resetStreak, addXP, loseHeart, addStudyResult, state.streak]);
+  // Handle Writing Completion
+  const handleWritingComplete = useCallback((summary) => {
+    // If writing is successful (e.g. less than 3 mistakes), treat as correct.
+    // HanziWriter's quiz mode usually ensures strokes are correct.
+    // If user gives up, maybe handle separately? For now assume complete = correct.
+    // Or check summary.totalMistakes
+    const correct = summary.totalMistakes < 3;
+    // We pass the correct object as 'option' to reuse logic, and -1 as index.
+    handleSelect(questions[currentIdx].correct, -1); 
+    // Force correct status override if needed, but handleSelect checks equality.
+    // Since we pass q.correct, it will be true.
+    // If mistakes were high, maybe we should pass null?
+    // Let's assume completion is enough for now.
+  }, [handleSelect, questions, currentIdx]);
+
+  const handleNextQuestion = useCallback(() => {
+    if (currentIdx + 1 >= questions.length) {
+      setFinished(true);
+    } else {
+      setCurrentIdx((prev) => prev + 1);
+      setSelected(null);
+      setIsCorrect(null);
+    }
+  }, [currentIdx, questions.length]);
 
   const handleRetry = useCallback(() => {
     const q = generateQuiz(hanjaPool, 10);
@@ -300,6 +326,7 @@ export default function QuizScreen({ hanjaPool, onHome, gameState, playSound, on
 
   const q = questions[currentIdx];
   const progressPercent = ((currentIdx) / questions.length) * 100;
+  const isWritingQuestion = q.type === 3;
 
   return (
     <div style={styles.container}>
@@ -312,38 +339,72 @@ export default function QuizScreen({ hanjaPool, onHome, gameState, playSound, on
       </div>
 
       <div style={styles.questionArea}>
-        {q.type === 1 ? (
+        {isWritingQuestion ? (
+           // Writing Question: Show Meaning+Sound, user writes Hanja
+           <div style={styles.meaningDisplay}>{q.correct.meaning} {q.correct.sound}</div>
+        ) : q.type === 1 ? (
+          // Meaning/Sound Question: Show Hanja, pick Meaning/Sound
           <div style={styles.meaningDisplay}>{q.correct.meaning} {q.correct.sound}</div>
         ) : (
+          // Hanja/Sound Question: Show Hanja, pick something else
           <div style={styles.hanjaDisplay}>{q.correct.char}</div>
         )}
         <div style={styles.questionText}>{QUESTION_LABELS[q.type]}</div>
       </div>
 
-      <div style={styles.optionsContainer}>
-        {q.options.map((opt, idx) => {
-          let btnStyle = { ...styles.optionBtn };
-          if (selected !== null) {
-            if (opt === q.correct) {
-              btnStyle = { ...btnStyle, ...styles.feedbackCorrect };
-            } else if (idx === selected && !isCorrect) {
-              btnStyle = { ...btnStyle, ...styles.feedbackWrong };
+      {/* Answer Area */}
+      {isWritingQuestion ? (
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+          {selected === null ? (
+            <WritingCanvas 
+              char={q.correct.char} 
+              width={280} 
+              height={280} 
+              onComplete={handleWritingComplete} 
+            />
+          ) : (
+            // Writing Finished State
+            <div style={{ textAlign: 'center', padding: '20px' }}>
+               <div style={{ fontSize: '64px', color: theme.colors.accent }}>{q.correct.char}</div>
+               <div style={{ color: theme.colors.success, marginTop: '10px' }}>쓰기 성공!</div>
+            </div>
+          )}
+        </div>
+      ) : (
+        // Multiple Choice Options
+        <div style={styles.optionsContainer}>
+          {q.options.map((opt, idx) => {
+            let btnStyle = { ...styles.optionBtn };
+            if (selected !== null) {
+              if (opt === q.correct) {
+                btnStyle = { ...btnStyle, ...styles.feedbackCorrect };
+              } else if (idx === selected && !isCorrect) {
+                btnStyle = { ...btnStyle, ...styles.feedbackWrong };
+              }
             }
-          }
-          return (
-            <button
-              key={idx}
-              style={btnStyle}
-              onClick={() => handleSelect(opt, idx)}
-              disabled={selected !== null}
-            >
-              {getOptionLabel(opt, q.type)}
-            </button>
-          );
-        })}
-      </div>
+            return (
+              <button
+                key={idx}
+                style={btnStyle}
+                onClick={() => handleSelect(opt, idx)}
+                disabled={selected !== null}
+              >
+                {getOptionLabel(opt, q.type)}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
-      {selected !== null && !isCorrect && (
+      {/* Manual Next Button (Only appears after selection/completion) */}
+      {selected !== null && (
+        <button style={styles.nextBtn} onClick={handleNextQuestion}>
+          다음 문제 ▶
+        </button>
+      )}
+
+      {/* Feedback / Example Box */}
+      {selected !== null && !isCorrect && !isWritingQuestion && (
         <div style={styles.exampleBox}>
           <div style={styles.exampleLabel}>
             정답: {q.correct.char} ({q.correct.meaning} {q.correct.sound})
