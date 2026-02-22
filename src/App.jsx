@@ -12,6 +12,7 @@ import QuizScreen from './screens/QuizScreen.jsx';
 import ReviewScreen from './screens/ReviewScreen.jsx';
 import ProgressScreen from './screens/ProgressScreen.jsx';
 import WriteScreen from './screens/WriteScreen.jsx';
+import InstallPWA from './components/InstallPWA.jsx';
 
 const appStyles = {
   wrapper: {
@@ -149,6 +150,7 @@ function App() {
       {state.showLevelUp && (
         <LevelUpModal level={state.level} onClose={closeLevelUp} />
       )}
+      <InstallPWA />
     </div>
   );
 }
