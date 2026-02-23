@@ -8,13 +8,16 @@ const MAX_REVIEW_COUNT = 20;
 
 const styles = {
   container: {
-    padding: '16px',
+    flex: 1,
+    padding: '12px 16px 16px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    minHeight: 'calc(100vh - 64px)',
+    overflow: 'hidden',
+    boxSizing: 'border-box',
   },
   progressBar: {
+    flexShrink: 0,
     width: '100%',
     height: '6px',
     background: theme.colors.surface,
@@ -37,55 +40,60 @@ const styles = {
     justifyContent: 'space-between',
   },
   statsBadge: {
+    flexShrink: 0,
     background: theme.colors.surface,
     padding: '4px 12px',
     borderRadius: '12px',
     fontSize: '13px',
     fontWeight: 'bold',
     color: '#8b5cf6',
-    marginBottom: '24px',
+    marginBottom: '8px',
     border: `1px solid ${theme.colors.secondary}`,
   },
   questionArea: {
-    flex: 1,
+    flex: '1 1 0',
+    minHeight: 0,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    marginBottom: '20px',
+    marginBottom: '8px',
+    overflow: 'hidden',
   },
   hanjaDisplay: {
-    fontSize: '72px',
+    fontSize: 'clamp(40px, 15vw, 72px)',
     fontFamily: theme.fonts.serif,
     color: theme.colors.text,
-    marginBottom: '12px',
+    marginBottom: '8px',
     textShadow: '0 2px 8px rgba(139, 92, 246, 0.3)',
+    lineHeight: 1.1,
   },
   meaningDisplay: {
-    fontSize: '28px',
+    fontSize: 'clamp(18px, 6vw, 28px)',
     fontFamily: theme.fonts.serif,
     color: '#8b5cf6',
-    marginBottom: '12px',
+    marginBottom: '8px',
   },
   questionText: {
-    fontSize: '16px',
+    fontSize: 'clamp(13px, 4vw, 16px)',
     color: theme.colors.textSecondary,
-    marginBottom: '24px',
+    marginBottom: '8px',
     textAlign: 'center',
   },
   optionsContainer: {
+    flexShrink: 0,
     width: '100%',
     display: 'flex',
     flexDirection: 'column',
-    gap: '10px',
+    gap: '8px',
   },
   optionBtn: {
     width: '100%',
-    minHeight: '56px',
-    padding: '14px 16px',
+    minHeight: '48px',
+    padding: '10px 16px',
     borderRadius: '12px',
-    fontSize: '18px',
+    fontSize: 'clamp(14px, 4vw, 18px)',
     fontWeight: 600,
     cursor: 'pointer',
     border: `2px solid ${theme.colors.secondary}`,
@@ -96,11 +104,12 @@ const styles = {
     transition: 'all 0.2s',
   },
   nextBtn: {
+    flexShrink: 0,
     width: '100%',
-    minHeight: '56px',
-    padding: '14px 16px',
+    minHeight: '48px',
+    padding: '10px 16px',
     borderRadius: '12px',
-    fontSize: '18px',
+    fontSize: 'clamp(14px, 4vw, 18px)',
     fontWeight: 700,
     cursor: 'pointer',
     border: 'none',
@@ -108,7 +117,7 @@ const styles = {
     color: 'white',
     fontFamily: theme.fonts.sans,
     textAlign: 'center',
-    marginTop: '20px',
+    marginTop: '8px',
     boxShadow: '0 4px 12px rgba(139, 92, 246, 0.4)',
   },
   feedbackCorrect: {
@@ -164,13 +173,13 @@ const styles = {
     marginBottom: '32px',
   },
   resultContainer: {
+    flex: 1,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     padding: '40px 16px',
     textAlign: 'center',
-    minHeight: 'calc(100vh - 64px)',
   },
   resultScore: {
     fontSize: '48px',
@@ -407,27 +416,31 @@ export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound, 
       {/* 획순 쓰기 문제 */}
       {q.type === 3 ? (
         <>
-          <div style={styles.questionArea}>
+          {/* 질문 헤더 — 고정 크기 */}
+          <div style={{ flexShrink: 0, textAlign: 'center', marginBottom: '8px', width: '100%' }}>
             <div style={styles.meaningDisplay}>{q.correct.meaning} {q.correct.sound}</div>
             <div style={styles.questionText}>{QUESTION_LABELS[3]}</div>
           </div>
-          {selected === null ? (
-            <WritingCanvas
-              char={q.correct.char}
-              width={260}
-              height={260}
-              onComplete={handleWritingComplete}
-              autoQuiz={true}
-              maxAttempts={3}
-            />
-          ) : (
-            <div style={{ textAlign: 'center', padding: '16px' }}>
-              <div style={{ fontSize: '64px', color: theme.colors.accent }}>{q.correct.char}</div>
-              <div style={{ color: isCorrect ? theme.colors.success : theme.colors.error, marginTop: '8px', fontWeight: 700 }}>
-                {isCorrect ? '✅ 성공!' : '❌ 실패...'}
+          {/* 캔버스 or 결과 — 남은 공간 차지 */}
+          <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {selected === null ? (
+              <WritingCanvas
+                char={q.correct.char}
+                width={200}
+                height={200}
+                onComplete={handleWritingComplete}
+                autoQuiz={true}
+                maxAttempts={3}
+              />
+            ) : (
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 'clamp(48px, 15vw, 72px)', color: theme.colors.accent }}>{q.correct.char}</div>
+                <div style={{ color: isCorrect ? theme.colors.success : theme.colors.error, marginTop: '8px', fontWeight: 700, fontSize: '18px' }}>
+                  {isCorrect ? '✅ 성공!' : '❌ 실패...'}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
           {selected !== null && (
             <button style={styles.nextBtn} onClick={handleNextQuestion}>
               다음 문제 ▶
