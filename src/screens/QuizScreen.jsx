@@ -217,7 +217,7 @@ function getOptionLabel(item, type) {
   return item.sound;
 }
 
-export default function QuizScreen({ hanjaPool, onHome, gameState, playSound, onCharResult }) {
+export default function QuizScreen({ hanjaPool, onHome, gameState, playSound, onCharResult, onWriteResult }) {
   const { state, addXP, loseHeart, incrementStreak, resetStreak, addStudyResult } = gameState;
   const [questions, setQuestions] = useState([]);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -266,20 +266,15 @@ export default function QuizScreen({ hanjaPool, onHome, gameState, playSound, on
     // User must click "Next" button.
   }, [selected, questions, currentIdx, playSound, incrementStreak, resetStreak, addXP, loseHeart, addStudyResult, state.streak, onCharResult]);
 
-  // Handle Writing Completion
+  // Handle Writing Completion — summary: { failed: bool, attempts: n }
   const handleWritingComplete = useCallback((summary) => {
-    // If writing is successful (e.g. less than 3 mistakes), treat as correct.
-    // HanziWriter's quiz mode usually ensures strokes are correct.
-    // If user gives up, maybe handle separately? For now assume complete = correct.
-    // Or check summary.totalMistakes
-    const correct = summary.totalMistakes < 3;
-    // We pass the correct object as 'option' to reuse logic, and -1 as index.
-    handleSelect(questions[currentIdx].correct, -1); 
-    // Force correct status override if needed, but handleSelect checks equality.
-    // Since we pass q.correct, it will be true.
-    // If mistakes were high, maybe we should pass null?
-    // Let's assume completion is enough for now.
-  }, [handleSelect, questions, currentIdx]);
+    const correct = !summary.failed;
+    const q = questions[currentIdx];
+    // 획순 전용 오답 기록
+    if (onWriteResult) onWriteResult(q.correct.char, correct);
+    // 일반 결과도 반영 (XP, 하트 등)
+    handleSelect(correct ? q.correct : null, -1);
+  }, [handleSelect, questions, currentIdx, onWriteResult]);
 
   const handleNextQuestion = useCallback(() => {
     if (currentIdx + 1 >= questions.length) {
@@ -364,12 +359,13 @@ export default function QuizScreen({ hanjaPool, onHome, gameState, playSound, on
       {isWritingQuestion ? (
         <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
           {selected === null ? (
-            <WritingCanvas 
-              char={q.correct.char} 
-              width={280} 
-              height={280} 
+            <WritingCanvas
+              char={q.correct.char}
+              width={280}
+              height={280}
               onComplete={handleWritingComplete}
-              maxAnimateCount={1}
+              autoQuiz={true}
+              maxAttempts={3}
             />
           ) : (
             // Writing Finished State
@@ -380,8 +376,8 @@ export default function QuizScreen({ hanjaPool, onHome, gameState, playSound, on
           )}
         </div>
       ) : (
-        // Multiple Choice Options
-        <div style={styles.optionsContainer}>
+        // Multiple Choice Options — key={currentIdx} 로 문제 바뀔 때 버튼 완전 리마운트
+        <div key={currentIdx} style={styles.optionsContainer}>
           {q.options.map((opt, idx) => {
             let btnStyle = { ...styles.optionBtn };
             if (selected !== null) {

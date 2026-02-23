@@ -1,19 +1,23 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { theme } from '../styles/theme.js';
 import { shuffle } from '../utils/shuffle.js';
+import WritingCanvas from '../components/WritingCanvas.jsx';
 
 // 복습 퀴즈는 최대 20문제까지
 const MAX_REVIEW_COUNT = 20;
 
 const styles = {
   container: {
-    padding: '16px',
+    flex: 1,
+    padding: '12px 16px 16px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    minHeight: 'calc(100vh - 64px)',
+    overflow: 'hidden',
+    boxSizing: 'border-box',
   },
   progressBar: {
+    flexShrink: 0,
     width: '100%',
     height: '6px',
     background: theme.colors.surface,
@@ -36,55 +40,60 @@ const styles = {
     justifyContent: 'space-between',
   },
   statsBadge: {
+    flexShrink: 0,
     background: theme.colors.surface,
     padding: '4px 12px',
     borderRadius: '12px',
     fontSize: '13px',
     fontWeight: 'bold',
     color: '#8b5cf6',
-    marginBottom: '24px',
+    marginBottom: '8px',
     border: `1px solid ${theme.colors.secondary}`,
   },
   questionArea: {
-    flex: 1,
+    flex: '1 1 0',
+    minHeight: 0,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    marginBottom: '20px',
+    marginBottom: '8px',
+    overflow: 'hidden',
   },
   hanjaDisplay: {
-    fontSize: '72px',
+    fontSize: 'clamp(40px, 15vw, 72px)',
     fontFamily: theme.fonts.serif,
     color: theme.colors.text,
-    marginBottom: '12px',
+    marginBottom: '8px',
     textShadow: '0 2px 8px rgba(139, 92, 246, 0.3)',
+    lineHeight: 1.1,
   },
   meaningDisplay: {
-    fontSize: '28px',
+    fontSize: 'clamp(18px, 6vw, 28px)',
     fontFamily: theme.fonts.serif,
     color: '#8b5cf6',
-    marginBottom: '12px',
+    marginBottom: '8px',
   },
   questionText: {
-    fontSize: '16px',
+    fontSize: 'clamp(13px, 4vw, 16px)',
     color: theme.colors.textSecondary,
-    marginBottom: '24px',
+    marginBottom: '8px',
     textAlign: 'center',
   },
   optionsContainer: {
+    flexShrink: 0,
     width: '100%',
     display: 'flex',
     flexDirection: 'column',
-    gap: '10px',
+    gap: '8px',
   },
   optionBtn: {
     width: '100%',
-    minHeight: '56px',
-    padding: '14px 16px',
+    minHeight: '48px',
+    padding: '10px 16px',
     borderRadius: '12px',
-    fontSize: '18px',
+    fontSize: 'clamp(14px, 4vw, 18px)',
     fontWeight: 600,
     cursor: 'pointer',
     border: `2px solid ${theme.colors.secondary}`,
@@ -95,11 +104,12 @@ const styles = {
     transition: 'all 0.2s',
   },
   nextBtn: {
+    flexShrink: 0,
     width: '100%',
-    minHeight: '56px',
-    padding: '14px 16px',
+    minHeight: '48px',
+    padding: '10px 16px',
     borderRadius: '12px',
-    fontSize: '18px',
+    fontSize: 'clamp(14px, 4vw, 18px)',
     fontWeight: 700,
     cursor: 'pointer',
     border: 'none',
@@ -107,7 +117,7 @@ const styles = {
     color: 'white',
     fontFamily: theme.fonts.sans,
     textAlign: 'center',
-    marginTop: '20px',
+    marginTop: '8px',
     boxShadow: '0 4px 12px rgba(139, 92, 246, 0.4)',
   },
   feedbackCorrect: {
@@ -163,13 +173,13 @@ const styles = {
     marginBottom: '32px',
   },
   resultContainer: {
+    flex: 1,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     padding: '40px 16px',
     textAlign: 'center',
-    minHeight: 'calc(100vh - 64px)',
   },
   resultScore: {
     fontSize: '48px',
@@ -210,6 +220,7 @@ const QUESTION_LABELS = [
   '이 한자의 뜻과 음은?',
   '이 뜻음에 해당하는 한자는?',
   '이 한자의 음(소리)은?',
+  '이 한자를 획순대로 써보세요!', // type 3 = 획순 쓰기
 ];
 
 function getOptionLabel(item, type) {
@@ -218,7 +229,7 @@ function getOptionLabel(item, type) {
   return item.sound;
 }
 
-export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound, onCharResult, charMastery }) {
+export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound, onCharResult, onWriteResult, charMastery }) {
   const { addXP } = gameState;
   const [questions, setQuestions] = useState([]);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -232,47 +243,64 @@ export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound, 
 
   // 문제 생성 로직
   useEffect(() => {
-    if (isLoaded) return; // 이미 로드했으면 스킵
+    if (isLoaded) return;
 
-    // 1. 틀린 적 있는 문제 필터링
+    // 1a. 일반 오답 항목
     const wrongItems = hanjaPool.filter(item => {
       const stats = charMastery[item.char];
       return stats && stats.wrong > 0;
     });
 
-    if (wrongItems.length === 0) {
+    // 1b. 획순 오답 항목 (writeWrong > 0)
+    const writeWrongItems = hanjaPool.filter(item => {
+      const stats = charMastery[item.char];
+      return stats && (stats.writeWrong || 0) > 0;
+    });
+
+    if (wrongItems.length === 0 && writeWrongItems.length === 0) {
       setQuestions([]);
       setIsLoaded(true);
       return;
     }
 
-    // 2. 정답률 낮은 순으로 정렬 (정답률 같으면 오답 수 많은 순)
+    // 2. 정답률 낮은 순 정렬
     wrongItems.sort((a, b) => {
-      const statsA = charMastery[a.char];
-      const statsB = charMastery[b.char];
-      const rateA = statsA.correct / (statsA.correct + statsA.wrong);
-      const rateB = statsB.correct / (statsB.correct + statsB.wrong);
-      
-      if (rateA !== rateB) return rateA - rateB; // 낮은 정답률 우선
-      return statsB.wrong - statsA.wrong; // 많은 오답 우선
+      const sA = charMastery[a.char];
+      const sB = charMastery[b.char];
+      const rA = sA.correct / (sA.correct + sA.wrong);
+      const rB = sB.correct / (sB.correct + sB.wrong);
+      if (rA !== rB) return rA - rB;
+      return sB.wrong - sA.wrong;
     });
 
-    // 3. 최대 20개까지만 자르기
-    const targetItems = wrongItems.slice(0, MAX_REVIEW_COUNT);
-
-    // 4. 퀴즈 생성
-    const newQuestions = targetItems.map(correct => {
-      const type = Math.floor(Math.random() * 3); // 0~2 (객관식만)
-      
-      // 오답 보기 생성 (전체 풀에서 정답 제외하고 랜덤 3개)
+    // 3. 일반 객관식 문제 (최대 15개)
+    const mcItems = wrongItems.slice(0, 15);
+    const mcQuestions = mcItems.map(correct => {
+      const type = Math.floor(Math.random() * 3); // 0~2
       const others = hanjaPool.filter(item => item.char !== correct.char);
       const wrongAnswers = shuffle(others).slice(0, 3);
       const options = shuffle([correct, ...wrongAnswers]);
-
       return { correct, type, options };
     });
 
-    setQuestions(newQuestions);
+    // 4. 획순 쓰기 문제 (최대 5개, writeWrong 많은 순)
+    writeWrongItems.sort((a, b) => {
+      const wA = (charMastery[a.char].writeWrong || 0);
+      const wB = (charMastery[b.char].writeWrong || 0);
+      return wB - wA;
+    });
+    const writeItems = writeWrongItems.slice(0, 5);
+    const writeQuestions = writeItems.map(correct => ({
+      correct,
+      type: 3, // 획순 쓰기
+      options: [],
+    }));
+
+    // 5. 두 유형 합쳐서 셔플
+    const allQuestions = shuffle([...mcQuestions, ...writeQuestions])
+      .slice(0, MAX_REVIEW_COUNT);
+
+    setQuestions(allQuestions);
     setIsLoaded(true);
   }, [hanjaPool, charMastery, isLoaded]);
 
@@ -314,6 +342,23 @@ export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound, 
       setIsCorrect(null);
     }
   }, [currentIdx, questions.length]);
+
+  // 획순 쓰기 문제 완료 핸들러 (복습 화면용)
+  const handleWritingComplete = useCallback((summary) => {
+    const correct = !summary.failed;
+    const q = questions[currentIdx];
+    if (onWriteResult) onWriteResult(q.correct.char, correct);
+    if (onCharResult)  onCharResult(q.correct.char, correct);
+    if (correct) {
+      playSound('correct');
+      addXP(8);
+      setTotalCorrect(prev => prev + 1);
+    } else {
+      playSound('wrong');
+    }
+    setIsCorrect(correct);
+    setSelected(-1); // 완료 표시 (선택지 없는 쓰기 문제용)
+  }, [questions, currentIdx, onWriteResult, onCharResult, playSound, addXP]);
 
   // 복습할 게 없을 때
   if (isLoaded && questions.length === 0) {
@@ -368,55 +413,94 @@ export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound, 
         {getStatsText(q.correct.char)}
       </div>
 
-      <div style={styles.questionArea}>
-        {q.type === 1 ? (
-          <div style={styles.meaningDisplay}>{q.correct.meaning} {q.correct.sound}</div>
-        ) : (
-          <div style={styles.hanjaDisplay}>{q.correct.char}</div>
-        )}
-        <div style={styles.questionText}>{QUESTION_LABELS[q.type]}</div>
-      </div>
-
-      <div style={styles.optionsContainer}>
-        {q.options.map((opt, idx) => {
-          let btnStyle = { ...styles.optionBtn };
-          if (selected !== null) {
-            if (opt === q.correct) {
-              btnStyle = { ...btnStyle, ...styles.feedbackCorrect };
-            } else if (idx === selected && !isCorrect) {
-              btnStyle = { ...btnStyle, ...styles.feedbackWrong };
-            }
-          }
-          return (
-            <button
-              key={idx}
-              style={btnStyle}
-              onClick={() => handleSelect(opt, idx)}
-              disabled={selected !== null}
-            >
-              {getOptionLabel(opt, q.type)}
-            </button>
-          );
-        })}
-      </div>
-
-      {selected !== null && (
-        <button style={styles.nextBtn} onClick={handleNextQuestion}>
-          다음 문제 ▶
-        </button>
-      )}
-
-      {selected !== null && !isCorrect && (
-        <div style={{ ...styles.exampleBox, borderLeftColor: theme.colors.error }}>
-          <div style={styles.exampleLabel}>
-            정답: {q.correct.char} ({q.correct.meaning} {q.correct.sound})
+      {/* 획순 쓰기 문제 */}
+      {q.type === 3 ? (
+        <>
+          {/* 질문 헤더 — 고정 크기 */}
+          <div style={{ flexShrink: 0, textAlign: 'center', marginBottom: '8px', width: '100%' }}>
+            <div style={styles.meaningDisplay}>{q.correct.meaning} {q.correct.sound}</div>
+            <div style={styles.questionText}>{QUESTION_LABELS[3]}</div>
           </div>
-          {q.correct.examples && q.correct.examples.length > 0 && (
-            <div style={styles.exampleText}>
-              예시: {q.correct.examples.slice(0, 2).join(', ')}
+          {/* 캔버스 or 결과 — 남은 공간 차지 */}
+          <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {selected === null ? (
+              <WritingCanvas
+                char={q.correct.char}
+                width={200}
+                height={200}
+                onComplete={handleWritingComplete}
+                autoQuiz={true}
+                maxAttempts={3}
+              />
+            ) : (
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 'clamp(48px, 15vw, 72px)', color: theme.colors.accent }}>{q.correct.char}</div>
+                <div style={{ color: isCorrect ? theme.colors.success : theme.colors.error, marginTop: '8px', fontWeight: 700, fontSize: '18px' }}>
+                  {isCorrect ? '✅ 성공!' : '❌ 실패...'}
+                </div>
+              </div>
+            )}
+          </div>
+          {selected !== null && (
+            <button style={styles.nextBtn} onClick={handleNextQuestion}>
+              다음 문제 ▶
+            </button>
+          )}
+        </>
+      ) : (
+        /* 일반 객관식 문제 */
+        <>
+          <div style={styles.questionArea}>
+            {q.type === 1 ? (
+              <div style={styles.meaningDisplay}>{q.correct.meaning} {q.correct.sound}</div>
+            ) : (
+              <div style={styles.hanjaDisplay}>{q.correct.char}</div>
+            )}
+            <div style={styles.questionText}>{QUESTION_LABELS[q.type]}</div>
+          </div>
+
+          <div key={currentIdx} style={styles.optionsContainer}>
+            {q.options.map((opt, idx) => {
+              let btnStyle = { ...styles.optionBtn };
+              if (selected !== null) {
+                if (opt === q.correct) {
+                  btnStyle = { ...btnStyle, ...styles.feedbackCorrect };
+                } else if (idx === selected && !isCorrect) {
+                  btnStyle = { ...btnStyle, ...styles.feedbackWrong };
+                }
+              }
+              return (
+                <button
+                  key={idx}
+                  style={btnStyle}
+                  onClick={() => handleSelect(opt, idx)}
+                  disabled={selected !== null}
+                >
+                  {getOptionLabel(opt, q.type)}
+                </button>
+              );
+            })}
+          </div>
+
+          {selected !== null && (
+            <button style={styles.nextBtn} onClick={handleNextQuestion}>
+              다음 문제 ▶
+            </button>
+          )}
+
+          {selected !== null && !isCorrect && (
+            <div style={{ ...styles.exampleBox, borderLeftColor: theme.colors.error }}>
+              <div style={styles.exampleLabel}>
+                정답: {q.correct.char} ({q.correct.meaning} {q.correct.sound})
+              </div>
+              {q.correct.examples && q.correct.examples.length > 0 && (
+                <div style={styles.exampleText}>
+                  예시: {q.correct.examples.slice(0, 2).join(', ')}
+                </div>
+              )}
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );
