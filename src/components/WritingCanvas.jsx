@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import HanziWriter from 'hanzi-writer';
 import { theme } from '../styles/theme.js';
 
@@ -42,9 +42,6 @@ const styles = {
     background: theme.colors.accent,
     color: 'white',
   },
-  outlineBtn: {
-    background: theme.colors.secondary,
-  },
   status: {
     height: '24px',
     fontSize: '14px',
@@ -59,25 +56,103 @@ const styles = {
   },
   error: {
     color: theme.colors.error,
-  }
+  },
+  attemptsRow: {
+    display: 'flex',
+    gap: '6px',
+    alignItems: 'center',
+    fontSize: '13px',
+    color: theme.colors.textSecondary,
+  },
+  heartFull:  { color: theme.colors.primary, fontSize: '16px' },
+  heartEmpty: { color: '#555',               fontSize: '16px' },
 };
 
-export default function WritingCanvas({ char, width = 280, height = 280, onComplete, maxAnimateCount = null }) {
-  const writerRef = useRef(null);
-  const writerInstance = useRef(null);
-  const [status, setStatus] = useState({ text: '준비', type: 'normal' });
-  const [isQuizMode, setIsQuizMode] = useState(false);
+/**
+ * Props
+ *  char            – 한자 문자
+ *  width / height  – 캔버스 크기 (기본 280)
+ *  onComplete      – 퀴즈 종료 콜백 ({ failed: bool, attempts: n })
+ *  maxAnimateCount – 획순 보기 최대 횟수 (null = 무제한)
+ *  autoQuiz        – true 이면 로드 직후 퀴즈 모드 자동 시작
+ *  maxAttempts     – 최대 시도 횟수 (기본 3). autoQuiz 전용.
+ */
+export default function WritingCanvas({
+  char,
+  width = 280,
+  height = 280,
+  onComplete,
+  maxAnimateCount = null,
+  autoQuiz = false,
+  maxAttempts = 3,
+}) {
+  const writerRef        = useRef(null);
+  const writerInstance   = useRef(null);
+  const attemptsLeftRef  = useRef(maxAttempts); // ref 로 관리 (콜백 클로저 문제 방지)
+  const quizActiveRef    = useRef(false);
+
+  const [status,       setStatus]       = useState({ text: '준비', type: 'normal' });
+  const [isQuizMode,   setIsQuizMode]   = useState(false);
   const [animateCount, setAnimateCount] = useState(0);
+  const [attemptsLeft, setAttemptsLeft] = useState(maxAttempts); // 화면 표시용
 
-  useEffect(() => {
-    // 한자가 바뀌면 카운트 초기화
-    setAnimateCount(0);
-  }, [char]);
+  // ── 퀴즈 시작 (내부 함수) ──────────────────────────────────────────
+  const startQuiz = useCallback(() => {
+    if (!writerInstance.current) return;
+    quizActiveRef.current = true;
+    setIsQuizMode(true);
+    setStatus({ text: '획순대로 써보세요!', type: 'normal' });
 
+    writerInstance.current.quiz({
+      drawingWidth: 20,
+      onMistake: () => {
+        if (!quizActiveRef.current) return;
+
+        const remaining = attemptsLeftRef.current - 1;
+        attemptsLeftRef.current = remaining;
+        setAttemptsLeft(remaining);
+        quizActiveRef.current = false;
+
+        if (remaining > 0) {
+          // 틀렸으니 처음부터 재시작
+          setStatus({ text: `틀렸어요! 처음부터 다시 (${remaining}번 남음)`, type: 'error' });
+          writerInstance.current.cancelQuiz();
+
+          setTimeout(() => {
+            attemptsLeftRef.current = remaining; // 유지
+            startQuiz();
+          }, 1200);
+        } else {
+          // 3회 모두 소진 → 오답 처리
+          setStatus({ text: '아쉬워요... 다음엔 꼭!', type: 'error' });
+          writerInstance.current.cancelQuiz();
+          // 정답 획순 보여주기
+          setTimeout(() => {
+            writerInstance.current.animateCharacter();
+          }, 400);
+          if (onComplete) onComplete({ failed: true, attempts: maxAttempts });
+        }
+      },
+      onCorrectStroke: (strokeData) => {
+        setStatus({ text: `좋아요! (${strokeData.strokeNum}/${strokeData.totalStrokes})`, type: 'normal' });
+      },
+      onComplete: () => {
+        quizActiveRef.current = false;
+        setStatus({ text: '참 잘했어요! 🎉', type: 'success' });
+        const usedAttempts = maxAttempts - attemptsLeftRef.current + 1;
+        if (onComplete) onComplete({ failed: false, attempts: usedAttempts });
+      },
+    });
+  }, [onComplete, maxAttempts]);
+
+  // ── HanziWriter 인스턴스 초기화 ────────────────────────────────────
   useEffect(() => {
     if (!writerRef.current || !char) return;
 
-    // 기존 인스턴스 정리 없음 (HanziWriter는 DOM을 직접 조작하므로 innerHTML 초기화가 편함)
+    setAnimateCount(0);
+    attemptsLeftRef.current = maxAttempts;
+    setAttemptsLeft(maxAttempts);
+    quizActiveRef.current = false;
     writerRef.current.innerHTML = '';
 
     try {
@@ -88,111 +163,101 @@ export default function WritingCanvas({ char, width = 280, height = 280, onCompl
         showOutline: true,
         strokeAnimationSpeed: 1,
         delayBetweenStrokes: 200,
-        strokeColor: '#ffffff', // 획 색상 (흰색)
-        outlineColor: '#555555', // 배경 힌트 색상 (회색)
-        radicalColor: theme.colors.accent, // 부수 색상 (강조)
-        drawingWidth: 20, // 획 굵기 (기본값보다 훨씬 두껍게 설정)
-        googlePolyfill: true, // 구글 폰트 데이터 백업 사용
-        charDataLoader: (char, onComplete) => {
+        strokeColor: '#ffffff',
+        outlineColor: '#555555',
+        radicalColor: theme.colors.accent,
+        drawingWidth: 20,
+        googlePolyfill: true,
+        charDataLoader: (char, onLoad) => {
           fetch(`https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0/${char}.json`)
             .then(res => res.json())
-            .then(onComplete)
-            .catch(() => {
-              setStatus({ text: '데이터 로드 실패', type: 'error' });
-            });
-        }
+            .then(data => {
+              onLoad(data);
+              // 로드 완료 후 autoQuiz 이면 자동 시작
+              if (autoQuiz) {
+                setTimeout(() => startQuiz(), 300);
+              } else {
+                setStatus({ text: '따라 써보세요!', type: 'normal' });
+              }
+            })
+            .catch(() => setStatus({ text: '데이터 로드 실패', type: 'error' }));
+        },
       });
-
-      // 로드 완료 후 퀴즈 모드 자동 시작 (선택 사항)
-      // writerInstance.current.quiz();
-      setStatus({ text: '따라 써보세요!', type: 'normal' });
-
     } catch (err) {
       console.error(err);
       setStatus({ text: '오류 발생', type: 'error' });
     }
+  }, [char, width, height, autoQuiz]); // startQuiz 는 의도적으로 제외 (초기화 한 번만)
 
-  }, [char, width, height]);
-
+  // ── 수동 획순 보기 ─────────────────────────────────────────────────
   const handleAnimate = () => {
     if (!writerInstance.current) return;
-    
-    // 최대 횟수 제한 체크
     if (maxAnimateCount !== null && animateCount >= maxAnimateCount) {
       setStatus({ text: `획순 보기는 ${maxAnimateCount}회만 가능합니다!`, type: 'error' });
       return;
     }
-
     setIsQuizMode(false);
+    quizActiveRef.current = false;
     writerInstance.current.animateCharacter({
       onComplete: () => {
         setStatus({ text: '획순 보기 완료', type: 'normal' });
         setAnimateCount(prev => prev + 1);
-      }
+      },
     });
   };
 
+  // ── 수동 퀴즈 시작 (autoQuiz 아닐 때 버튼용) ───────────────────────
   const handleQuiz = () => {
-    if (!writerInstance.current) return;
-    setIsQuizMode(true);
-    setStatus({ text: '쓰기 연습 시작!', type: 'normal' });
-    
-    writerInstance.current.quiz({
-      drawingWidth: 20, // 퀴즈 모드 시작할 때 굵기 강제 적용
-      onMistake: (strokeData) => {
-        setStatus({ text: '앗! 다시 그어보세요.', type: 'error' });
-      },
-      onCorrectStroke: (strokeData) => {
-        setStatus({ text: `좋아요! (${strokeData.strokeNum}/${strokeData.totalStrokes})`, type: 'normal' });
-      },
-      onComplete: (summary) => {
-        setStatus({ text: '참 잘했어요! 🎉', type: 'success' });
-        if (onComplete) onComplete(summary);
-      }
-    });
+    attemptsLeftRef.current = maxAttempts;
+    setAttemptsLeft(maxAttempts);
+    startQuiz();
   };
 
-  const toggleOutline = () => {
-    if (!writerInstance.current) return;
-    const data = writerInstance.current._options; // 내부 옵션 접근 (API에 hideOutline/showOutline이 있음)
-    // HanziWriter API: hideOutline(), showOutline()
-    // 현재 상태를 알기 어려우므로 토글 로직 구현
-    // 간단히: 항상 껐다 켰다 하기보다 버튼을 분리하거나 상태관리 필요.
-    // 여기서는 "힌트 끄기/켜기"로 구현
-    // _options.showOutline은 초기값일 뿐.
-    
-    // 강제로 show/hide
-    // writerInstance.current.hideOutline();
-    // writerInstance.current.showOutline();
-  };
-
+  // ── 렌더 ──────────────────────────────────────────────────────────
   return (
     <div style={styles.container}>
       <div ref={writerRef} style={{ ...styles.writerWrapper, width, height }} />
-      
+
+      {/* 시도 횟수 하트 표시 (autoQuiz 모드일 때만) */}
+      {autoQuiz && (
+        <div style={styles.attemptsRow}>
+          {Array.from({ length: maxAttempts }).map((_, i) => (
+            <span key={i} style={i < attemptsLeft ? styles.heartFull : styles.heartEmpty}>
+              {i < attemptsLeft ? '❤️' : '🖤'}
+            </span>
+          ))}
+          <span style={{ marginLeft: 4 }}>기회 남음</span>
+        </div>
+      )}
+
       <div style={styles.status}>
         <span style={status.type === 'success' ? styles.success : status.type === 'error' ? styles.error : {}}>
           {status.text}
         </span>
       </div>
 
-      <div style={styles.controls}>
-        <button 
-          style={{ 
-            ...styles.button, 
-            ...styles.animateBtn,
-            opacity: (maxAnimateCount !== null && animateCount >= maxAnimateCount) ? 0.5 : 1,
-            cursor: (maxAnimateCount !== null && animateCount >= maxAnimateCount) ? 'not-allowed' : 'pointer'
-          }} 
-          onClick={handleAnimate}
-          disabled={maxAnimateCount !== null && animateCount >= maxAnimateCount}
-        >
-          {maxAnimateCount !== null ? `▶ 획순 보기 (${maxAnimateCount - animateCount}회 남음)` : '▶ 획순 보기'}
-        </button>
-        <button style={{ ...styles.button, ...styles.quizBtn }} onClick={handleQuiz}>
-          ✍️ 따라 쓰기
-        </button>
-      </div>
+      {/* autoQuiz 모드가 아닐 때만 수동 버튼 표시 */}
+      {!autoQuiz && (
+        <div style={styles.controls}>
+          <button
+            style={{
+              ...styles.button,
+              ...styles.animateBtn,
+              opacity: (maxAnimateCount !== null && animateCount >= maxAnimateCount) ? 0.5 : 1,
+              cursor:  (maxAnimateCount !== null && animateCount >= maxAnimateCount) ? 'not-allowed' : 'pointer',
+            }}
+            onClick={handleAnimate}
+            disabled={maxAnimateCount !== null && animateCount >= maxAnimateCount}
+          >
+            {maxAnimateCount !== null
+              ? `▶ 획순 보기 (${maxAnimateCount - animateCount}회 남음)`
+              : '▶ 획순 보기'}
+          </button>
+          <button style={{ ...styles.button, ...styles.quizBtn }} onClick={handleQuiz}>
+            ✍️ 따라 쓰기
+          </button>
+        </div>
+      )}
     </div>
   );
 }

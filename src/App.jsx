@@ -98,12 +98,27 @@ function App() {
 
   const handleCharResult = useCallback((char, correct) => {
     setCharMastery((prev) => {
-      const existing = prev[char] || { correct: 0, wrong: 0 };
+      const existing = prev[char] || { correct: 0, wrong: 0, writeWrong: 0 };
       return {
         ...prev,
         [char]: {
+          ...existing,
           correct: existing.correct + (correct ? 1 : 0),
-          wrong: existing.wrong + (correct ? 0 : 1),
+          wrong:   existing.wrong   + (correct ? 0 : 1),
+        },
+      };
+    });
+  }, []);
+
+  // 획순 퀴즈 전용 결과 기록 (writeWrong 카운트)
+  const handleWriteCharResult = useCallback((char, correct) => {
+    setCharMastery((prev) => {
+      const existing = prev[char] || { correct: 0, wrong: 0, writeWrong: 0 };
+      return {
+        ...prev,
+        [char]: {
+          ...existing,
+          writeWrong: (existing.writeWrong || 0) + (correct ? 0 : 1),
         },
       };
     });
@@ -119,7 +134,8 @@ function App() {
       gameState,
       playSound,
       onCharResult: handleCharResult,
-      charMastery, // 복습 모드 등에서 통계 활용
+      onWriteResult: handleWriteCharResult, // 획순 퀴즈 결과 전용
+      charMastery,
     };
 
     switch (screen) {
