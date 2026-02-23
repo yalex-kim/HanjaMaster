@@ -459,7 +459,7 @@ export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound, 
             <div style={styles.questionText}>{QUESTION_LABELS[q.type]}</div>
           </div>
 
-          <div style={styles.optionsContainer}>
+          <div key={currentIdx} style={styles.optionsContainer}>
             {q.options.map((opt, idx) => {
               let btnStyle = { ...styles.optionBtn };
               if (selected !== null) {

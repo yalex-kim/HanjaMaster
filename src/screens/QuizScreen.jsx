@@ -376,8 +376,8 @@ export default function QuizScreen({ hanjaPool, onHome, gameState, playSound, on
           )}
         </div>
       ) : (
-        // Multiple Choice Options
-        <div style={styles.optionsContainer}>
+        // Multiple Choice Options — key={currentIdx} 로 문제 바뀔 때 버튼 완전 리마운트
+        <div key={currentIdx} style={styles.optionsContainer}>
           {q.options.map((opt, idx) => {
             let btnStyle = { ...styles.optionBtn };
             if (selected !== null) {
