@@ -5,13 +5,16 @@ import WritingCanvas from '../components/WritingCanvas.jsx';
 
 const styles = {
   container: {
-    padding: '16px',
+    flex: 1,               // 부모가 준 공간을 꽉 채움 (minHeight 제거)
+    padding: '12px 16px 16px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    minHeight: 'calc(100vh - 64px)',
+    overflow: 'hidden',    // 스크롤 없이 내부에서 fit
+    boxSizing: 'border-box',
   },
   progressBar: {
+    flexShrink: 0,         // 고정 크기
     width: '100%',
     height: '6px',
     background: theme.colors.surface,
@@ -34,45 +37,49 @@ const styles = {
     justifyContent: 'space-between',
   },
   questionArea: {
-    flex: 1,
+    flex: '1 1 0',         // 남은 공간 차지하되 줄어들 수 있음
+    minHeight: 0,          // flex 자식 shrink 허용 (핵심!)
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    marginBottom: '20px',
+    marginBottom: '8px',
+    overflow: 'hidden',
   },
   hanjaDisplay: {
-    fontSize: '72px',
+    fontSize: 'clamp(40px, 15vw, 72px)',  // 화면 크기에 따라 자동 축소
     fontFamily: theme.fonts.serif,
     color: theme.colors.text,
-    marginBottom: '12px',
+    marginBottom: '8px',
     textShadow: '0 2px 8px rgba(233,69,96,0.3)',
+    lineHeight: 1.1,
   },
   meaningDisplay: {
-    fontSize: '28px',
+    fontSize: 'clamp(18px, 6vw, 28px)',   // 화면 크기에 따라 자동 축소
     fontFamily: theme.fonts.serif,
     color: theme.colors.accent,
-    marginBottom: '12px',
+    marginBottom: '8px',
   },
   questionText: {
-    fontSize: '16px',
+    fontSize: 'clamp(13px, 4vw, 16px)',
     color: theme.colors.textSecondary,
-    marginBottom: '24px',
+    marginBottom: '8px',
     textAlign: 'center',
   },
   optionsContainer: {
+    flexShrink: 0,         // 선택지 영역은 줄어들지 않음 (항상 표시)
     width: '100%',
     display: 'flex',
     flexDirection: 'column',
-    gap: '10px',
+    gap: '8px',
   },
   optionBtn: {
     width: '100%',
-    minHeight: '56px',
-    padding: '14px 16px',
+    minHeight: '48px',
+    padding: '10px 16px',
     borderRadius: '12px',
-    fontSize: '18px',
+    fontSize: 'clamp(14px, 4vw, 18px)',   // 화면 비율에 맞게 축소
     fontWeight: 600,
     cursor: 'pointer',
     border: `2px solid ${theme.colors.secondary}`,
@@ -83,11 +90,12 @@ const styles = {
     transition: 'all 0.2s',
   },
   nextBtn: {
+    flexShrink: 0,         // 다음 버튼도 고정 크기 유지
     width: '100%',
-    minHeight: '56px',
-    padding: '14px 16px',
+    minHeight: '48px',
+    padding: '12px 16px',
     borderRadius: '12px',
-    fontSize: '18px',
+    fontSize: 'clamp(14px, 4vw, 18px)',
     fontWeight: 700,
     cursor: 'pointer',
     border: 'none',
@@ -95,7 +103,7 @@ const styles = {
     color: theme.colors.text,
     fontFamily: theme.fonts.sans,
     textAlign: 'center',
-    marginTop: '20px',
+    marginTop: '8px',
     boxShadow: '0 4px 12px rgba(233, 69, 96, 0.4)',
   },
   feedbackCorrect: {

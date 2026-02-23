@@ -4,21 +4,23 @@ import { generateQuiz } from '../utils/quiz.js';
 
 const styles = {
   container: {
-    padding: '16px',
+    flex: 1,               // 부모가 준 공간을 꽉 채움 (minHeight 제거)
+    padding: '12px 16px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    minHeight: '100vh',
     background: '#1a1a2e',
-    overflow: 'hidden',
+    overflow: 'hidden',    // 스크롤 없이 내부 비율로 fit
     position: 'relative',
+    boxSizing: 'border-box',
   },
   header: {
+    flexShrink: 0,         // 헤더는 고정 크기 유지
     width: '100%',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '20px',
+    marginBottom: '12px',
     zIndex: 10,
   },
   hpBarContainer: {
@@ -46,13 +48,13 @@ const styles = {
   }),
   battleField: {
     flex: 1,
+    minHeight: 0,          // flex 자식이 줄어들 수 있도록 (핵심!)
     width: '100%',
     display: 'flex',
     flexDirection: 'column',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
     alignItems: 'center',
     position: 'relative',
-    marginBottom: '20px',
   },
   monsterArea: {
     display: 'flex',
@@ -61,9 +63,10 @@ const styles = {
     animation: 'float 3s ease-in-out infinite',
   },
   monsterEmoji: {
-    fontSize: '120px',
+    fontSize: 'clamp(60px, 18vw, 110px)',  // 화면 너비에 따라 자동 축소
     filter: 'drop-shadow(0 0 20px rgba(255,0,0,0.5))',
     transition: 'transform 0.1s',
+    lineHeight: 1,
   },
   monsterName: {
     color: '#ff4d4d',
@@ -87,21 +90,23 @@ const styles = {
     alignItems: 'center',
   },
   playerEmoji: {
-    fontSize: '80px',
+    fontSize: 'clamp(40px, 12vw, 72px)',  // 화면 비율에 맞게 축소
     transition: 'transform 0.1s',
+    lineHeight: 1,
   },
   quizArea: {
+    flexShrink: 0,         // 퀴즈 영역은 고정 (배틀 필드가 줄어듦)
     width: '100%',
     background: 'rgba(0,0,0,0.8)',
     borderRadius: '16px',
-    padding: '16px',
+    padding: '12px',
     border: `2px solid ${theme.colors.secondary}`,
   },
   questionText: {
-    fontSize: '24px',
+    fontSize: 'clamp(16px, 5vw, 22px)',  // 화면 비율에 맞게 축소
     color: 'white',
     textAlign: 'center',
-    marginBottom: '16px',
+    marginBottom: '10px',
     fontWeight: 'bold',
   },
   optionsGrid: {
@@ -110,8 +115,8 @@ const styles = {
     gap: '8px',
   },
   optionBtn: {
-    padding: '16px',
-    fontSize: '18px',
+    padding: 'clamp(8px, 2vw, 14px)',
+    fontSize: 'clamp(14px, 4vw, 18px)',  // 화면 크기에 따라 자동 조정
     borderRadius: '8px',
     border: 'none',
     background: theme.colors.surface,
@@ -119,6 +124,7 @@ const styles = {
     cursor: 'pointer',
     fontWeight: 'bold',
     transition: 'background 0.1s',
+    minHeight: '44px',
   },
   stageInfo: {
     position: 'absolute',
