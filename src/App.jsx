@@ -12,6 +12,7 @@ import QuizScreen from './screens/QuizScreen.jsx';
 import ReviewScreen from './screens/ReviewScreen.jsx';
 import ProgressScreen from './screens/ProgressScreen.jsx';
 import WriteScreen from './screens/WriteScreen.jsx';
+import BattleScreen from './screens/BattleScreen.jsx';
 import InstallPWA from './components/InstallPWA.jsx';
 
 const appStyles = {
@@ -117,6 +118,8 @@ function App() {
         return <QuizScreen {...sharedProps} />;
       case 'write':
         return <WriteScreen {...sharedProps} />;
+      case 'battle':
+        return <BattleScreen {...sharedProps} />;
       case 'review':
         return <ReviewScreen {...sharedProps} />;
       case 'progress':
