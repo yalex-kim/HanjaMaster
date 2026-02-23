@@ -23,7 +23,7 @@ const appStyles = {
     minHeight: '100vh',
     background: theme.colors.background,
     position: 'relative',
-    overflow: 'hidden',
+    overflowX: 'hidden',   // 가로 스크롤만 차단, 세로 스크롤 허용
   },
 };
 
