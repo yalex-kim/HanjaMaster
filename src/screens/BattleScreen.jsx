@@ -10,7 +10,8 @@ const styles = {
     alignItems: 'center',
     minHeight: '100vh',
     background: '#1a1a2e',
-    overflow: 'hidden',
+    overflowX: 'hidden',   // 가로 스크롤만 차단
+    overflowY: 'auto',     // 선택지 잘림 방지: 세로 스크롤 허용
     position: 'relative',
   },
   header: {

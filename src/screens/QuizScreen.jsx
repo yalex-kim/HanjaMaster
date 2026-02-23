@@ -6,6 +6,7 @@ import WritingCanvas from '../components/WritingCanvas.jsx';
 const styles = {
   container: {
     padding: '16px',
+    paddingBottom: '32px',  // 하단 선택지 잘림 방지
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
