@@ -20,9 +20,18 @@ const appStyles = {
     width: '100%',
     maxWidth: theme.sizes.maxWidth,
     margin: '0 auto',
-    minHeight: '100vh',
+    height: '100dvh',          // 동적 뷰포트 높이 (모바일 주소창 제외)
+    display: 'flex',
+    flexDirection: 'column',
     background: theme.colors.background,
     position: 'relative',
+    overflow: 'hidden',        // 전체 스크롤 차단 — 내부에서 비율로 fit
+  },
+  content: {
+    flex: 1,
+    minHeight: 0,              // flex 자식이 줄어들 수 있도록 (필수!)
+    display: 'flex',
+    flexDirection: 'column',
     overflow: 'hidden',
   },
 };
@@ -149,7 +158,9 @@ function App() {
       {screen !== 'home' && (
         <XPBar currentXP={state.xp} requiredXP={requiredXP} />
       )}
-      {renderScreen()}
+      <div style={appStyles.content}>
+        {renderScreen()}
+      </div>
       {state.showLevelUp && (
         <LevelUpModal level={state.level} onClose={closeLevelUp} />
       )}
