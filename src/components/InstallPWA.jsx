@@ -32,12 +32,13 @@ export default function InstallPWA() {
   const [showButton, setShowButton] = useState(false);
 
   useEffect(() => {
+    // 이미 닫았거나 거절했는지 확인
+    const isDismissed = localStorage.getItem('pwa_install_dismissed');
+    if (isDismissed) return;
+
     const handler = (e) => {
-      // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
-      // Stash the event so it can be triggered later.
       setDeferredPrompt(e);
-      // Update UI notify the user they can install the PWA
       setShowButton(true);
     };
 
@@ -48,22 +49,21 @@ export default function InstallPWA() {
     };
   }, []);
 
+  const handleDismiss = (e) => {
+    e.stopPropagation();
+    localStorage.setItem('pwa_install_dismissed', 'true');
+    setShowButton(false);
+  };
+
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
-
-    // Show the install prompt
     deferredPrompt.prompt();
-
-    // Wait for the user to respond to the prompt
     const { outcome } = await deferredPrompt.userChoice;
     
     if (outcome === 'accepted') {
-      console.log('User accepted the install prompt');
-    } else {
-      console.log('User dismissed the install prompt');
+      localStorage.setItem('pwa_install_dismissed', 'true');
     }
-
-    // We've used the prompt, and can't use it again, throw it away
+    
     setDeferredPrompt(null);
     setShowButton(false);
   };
@@ -71,9 +71,21 @@ export default function InstallPWA() {
   if (!showButton) return null;
 
   return (
-    <button style={styles.button} onClick={handleInstallClick}>
+    <div style={styles.button} onClick={handleInstallClick}>
       <span style={styles.icon}>📲</span>
       앱 설치하기
-    </button>
+      <span 
+        onClick={handleDismiss}
+        style={{
+          marginLeft: '12px',
+          padding: '4px 8px',
+          fontSize: '18px',
+          opacity: 0.7,
+          borderLeft: '1px solid rgba(255,255,255,0.3)'
+        }}
+      >
+        ✕
+      </span>
+    </div>
   );
 }

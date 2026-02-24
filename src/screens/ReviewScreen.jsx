@@ -73,7 +73,8 @@ const styles = {
     fontSize: 'clamp(18px, 6vw, 28px)',
     fontFamily: theme.fonts.serif,
     color: '#8b5cf6',
-    marginBottom: '8px',
+    paddingTop: '20px',    // 상단 여백 충분히
+    marginBottom: '12px',
   },
   questionText: {
     fontSize: 'clamp(13px, 4vw, 16px)',
@@ -422,7 +423,7 @@ export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound, 
             <div style={styles.questionText}>{QUESTION_LABELS[3]}</div>
           </div>
           {/* 캔버스 or 결과 — 남은 공간 차지 */}
-          <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '20px' }}>
             {selected === null ? (
               <WritingCanvas
                 char={q.correct.char}
@@ -433,7 +434,7 @@ export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound, 
                 maxAttempts={3}
               />
             ) : (
-              <div style={{ textAlign: 'center' }}>
+              <div style={{ textAlign: 'center', padding: '20px' }}>
                 <div style={{ fontSize: 'clamp(48px, 15vw, 72px)', color: theme.colors.accent }}>{q.correct.char}</div>
                 <div style={{ color: isCorrect ? theme.colors.success : theme.colors.error, marginTop: '8px', fontWeight: 700, fontSize: '18px' }}>
                   {isCorrect ? '✅ 성공!' : '❌ 실패...'}
@@ -482,24 +483,38 @@ export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound, 
             })}
           </div>
 
-          {selected !== null && (
+          {/* Manual Next Button & Feedback Box — 공간 확보 */}
+          <div style={{
+            width: '100%',
+            flexShrink: 0,
+            visibility: selected !== null ? 'visible' : 'hidden',
+            opacity: selected !== null ? 1 : 0,
+            transition: 'opacity 0.2s ease-in-out',
+            pointerEvents: selected !== null ? 'auto' : 'none',
+          }}>
             <button style={styles.nextBtn} onClick={handleNextQuestion}>
               다음 문제 ▶
             </button>
-          )}
 
-          {selected !== null && !isCorrect && (
-            <div style={{ ...styles.exampleBox, borderLeftColor: theme.colors.error }}>
-              <div style={styles.exampleLabel}>
-                정답: {q.correct.char} ({q.correct.meaning} {q.correct.sound})
-              </div>
-              {q.correct.examples && q.correct.examples.length > 0 && (
-                <div style={styles.exampleText}>
-                  예시: {q.correct.examples.slice(0, 2).join(', ')}
+            {selected !== null && !isCorrect && (
+              <div style={{ 
+                ...styles.exampleBox, 
+                borderLeftColor: theme.colors.error,
+                minHeight: '60px'
+              }}>
+                <div style={styles.exampleLabel}>
+                  정답: {q.correct.char} ({q.correct.meaning} {q.correct.sound})
                 </div>
-              )}
-            </div>
-          )}
+                {q.correct.examples && q.correct.examples.length > 0 ? (
+                  <div style={styles.exampleText}>
+                    예시: {q.correct.examples.slice(0, 2).join(', ')}
+                  </div>
+                ) : (
+                  <div style={{ ...styles.exampleText, opacity: 0 }}>placeholder</div>
+                )}
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>
