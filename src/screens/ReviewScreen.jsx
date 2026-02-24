@@ -423,7 +423,7 @@ export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound, 
             <div style={styles.questionText}>{QUESTION_LABELS[3]}</div>
           </div>
           {/* 캔버스 or 결과 — 남은 공간 차지 */}
-          <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '12px' }}>
             {selected === null ? (
               <WritingCanvas
                 char={q.correct.char}

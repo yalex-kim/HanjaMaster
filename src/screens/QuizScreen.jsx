@@ -358,7 +358,7 @@ export default function QuizScreen({ hanjaPool, onHome, gameState, playSound, on
 
       {/* Answer Area */}
       {isWritingQuestion ? (
-        <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
           {selected === null ? (
             <WritingCanvas
               char={q.correct.char}
