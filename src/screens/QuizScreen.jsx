@@ -401,16 +401,27 @@ export default function QuizScreen({ hanjaPool, onHome, gameState, playSound, on
         </div>
       )}
 
-      {/* Manual Next Button (Only appears after selection/completion) */}
-      {selected !== null && (
-        <button style={styles.nextBtn} onClick={handleNextQuestion}>
-          다음 문제 ▶
-        </button>
-      )}
+      {/* Next Button — always rendered to prevent layout shift; hidden until answer selected */}
+      <button
+        style={{
+          ...styles.nextBtn,
+          visibility: selected !== null ? 'visible' : 'hidden',
+          pointerEvents: selected !== null ? 'auto' : 'none',
+        }}
+        onClick={handleNextQuestion}
+      >
+        다음 문제 ▶
+      </button>
 
-      {/* Feedback / Example Box */}
-      {selected !== null && !isWritingQuestion && (
-        <div style={{ ...styles.exampleBox, borderLeftColor: isCorrect ? theme.colors.success : theme.colors.accent }}>
+      {/* Feedback / Example Box — always rendered (non-writing) to prevent layout shift */}
+      {!isWritingQuestion && (
+        <div
+          style={{
+            ...styles.exampleBox,
+            borderLeftColor: isCorrect ? theme.colors.success : theme.colors.accent,
+            visibility: selected !== null ? 'visible' : 'hidden',
+          }}
+        >
           <div style={styles.exampleLabel}>
             {isCorrect ? '정답!' : '오답 노트'} : {q.correct.char} ({q.correct.meaning} {q.correct.sound})
           </div>
