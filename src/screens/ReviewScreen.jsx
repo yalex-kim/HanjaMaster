@@ -73,6 +73,7 @@ const styles = {
     fontSize: 'clamp(18px, 6vw, 28px)',
     fontFamily: theme.fonts.serif,
     color: '#8b5cf6',
+    paddingTop: '8px',     // 윗부분 글씨 잘림 방지
     marginBottom: '8px',
   },
   questionText: {

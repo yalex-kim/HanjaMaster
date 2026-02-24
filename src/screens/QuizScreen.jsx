@@ -44,6 +44,7 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
+    paddingTop: '8px',     // 윗부분 글씨 잘림 방지 (여유 공간 확보)
     marginBottom: '8px',
     overflow: 'hidden',
   },
