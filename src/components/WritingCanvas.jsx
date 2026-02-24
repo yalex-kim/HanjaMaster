@@ -218,15 +218,34 @@ export default function WritingCanvas({
     <div style={styles.container}>
       <div ref={writerRef} style={{ ...styles.writerWrapper, width, height }} />
 
-      {/* 시도 횟수 하트 표시 (autoQuiz 모드일 때만) */}
+      {/* autoQuiz 모드일 때만 힌트 및 시도 횟수 표시 */}
       {autoQuiz && (
-        <div style={styles.attemptsRow}>
-          {Array.from({ length: maxAttempts }).map((_, i) => (
-            <span key={i} style={i < attemptsLeft ? styles.heartFull : styles.heartEmpty}>
-              {i < attemptsLeft ? '❤️' : '🖤'}
-            </span>
-          ))}
-          <span style={{ marginLeft: 4 }}>기회 남음</span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+          <div style={styles.attemptsRow}>
+            {Array.from({ length: maxAttempts }).map((_, i) => (
+              <span key={i} style={i < attemptsLeft ? styles.heartFull : styles.heartEmpty}>
+                {i < attemptsLeft ? '❤️' : '🖤'}
+              </span>
+            ))}
+            <span style={{ marginLeft: 4 }}>기회 남음</span>
+          </div>
+
+          {/* 복습 퀴즈용 힌트 버튼 (maxAnimateCount가 있을 때만) */}
+          {maxAnimateCount !== null && (
+            <button
+              style={{
+                ...styles.button,
+                background: theme.colors.secondary,
+                fontSize: '12px',
+                padding: '4px 12px',
+                opacity: animateCount >= maxAnimateCount ? 0.5 : 1
+              }}
+              onClick={handleAnimate}
+              disabled={animateCount >= maxAnimateCount}
+            >
+              💡 획순 힌트 ({maxAnimateCount - animateCount}회 남음)
+            </button>
+          )}
         </div>
       )}
 
