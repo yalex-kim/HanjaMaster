@@ -401,26 +401,40 @@ export default function QuizScreen({ hanjaPool, onHome, gameState, playSound, on
         </div>
       )}
 
-      {/* Manual Next Button (Only appears after selection/completion) */}
-      {selected !== null && (
+      {/* Manual Next Button & Feedback Box — 공간 확보를 위해 항상 렌더링하고 투명도로 조절 */}
+      <div style={{
+        width: '100%',
+        flexShrink: 0,
+        visibility: selected !== null ? 'visible' : 'hidden',
+        opacity: selected !== null ? 1 : 0,
+        transition: 'opacity 0.2s ease-in-out',
+        pointerEvents: selected !== null ? 'auto' : 'none',
+      }}>
+        {/* Manual Next Button */}
         <button style={styles.nextBtn} onClick={handleNextQuestion}>
           다음 문제 ▶
         </button>
-      )}
 
-      {/* Feedback / Example Box */}
-      {selected !== null && !isWritingQuestion && (
-        <div style={{ ...styles.exampleBox, borderLeftColor: isCorrect ? theme.colors.success : theme.colors.accent }}>
-          <div style={styles.exampleLabel}>
-            {isCorrect ? '정답!' : '오답 노트'} : {q.correct.char} ({q.correct.meaning} {q.correct.sound})
-          </div>
-          {q.correct.examples && q.correct.examples.length > 0 && (
-            <div style={styles.exampleText}>
-              예시: {q.correct.examples.slice(0, 2).join(', ')}
+        {/* Feedback / Example Box */}
+        {!isWritingQuestion && (
+          <div style={{ 
+            ...styles.exampleBox, 
+            borderLeftColor: isCorrect ? theme.colors.success : theme.colors.accent,
+            minHeight: '60px' // 피드백 박스 높이 고정 (내용에 따라 변동 최소화)
+          }}>
+            <div style={styles.exampleLabel}>
+              {isCorrect ? '정답!' : '오답 노트'} : {q.correct.char} ({q.correct.meaning} {q.correct.sound})
             </div>
-          )}
-        </div>
-      )}
+            {q.correct.examples && q.correct.examples.length > 0 ? (
+              <div style={styles.exampleText}>
+                예시: {q.correct.examples.slice(0, 2).join(', ')}
+              </div>
+            ) : (
+              <div style={{ ...styles.exampleText, opacity: 0 }}>placeholder</div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

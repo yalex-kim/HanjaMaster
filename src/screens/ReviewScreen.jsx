@@ -482,24 +482,38 @@ export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound, 
             })}
           </div>
 
-          {selected !== null && (
+          {/* Manual Next Button & Feedback Box — 공간 확보 */}
+          <div style={{
+            width: '100%',
+            flexShrink: 0,
+            visibility: selected !== null ? 'visible' : 'hidden',
+            opacity: selected !== null ? 1 : 0,
+            transition: 'opacity 0.2s ease-in-out',
+            pointerEvents: selected !== null ? 'auto' : 'none',
+          }}>
             <button style={styles.nextBtn} onClick={handleNextQuestion}>
               다음 문제 ▶
             </button>
-          )}
 
-          {selected !== null && !isCorrect && (
-            <div style={{ ...styles.exampleBox, borderLeftColor: theme.colors.error }}>
-              <div style={styles.exampleLabel}>
-                정답: {q.correct.char} ({q.correct.meaning} {q.correct.sound})
-              </div>
-              {q.correct.examples && q.correct.examples.length > 0 && (
-                <div style={styles.exampleText}>
-                  예시: {q.correct.examples.slice(0, 2).join(', ')}
+            {selected !== null && !isCorrect && (
+              <div style={{ 
+                ...styles.exampleBox, 
+                borderLeftColor: theme.colors.error,
+                minHeight: '60px'
+              }}>
+                <div style={styles.exampleLabel}>
+                  정답: {q.correct.char} ({q.correct.meaning} {q.correct.sound})
                 </div>
-              )}
-            </div>
-          )}
+                {q.correct.examples && q.correct.examples.length > 0 ? (
+                  <div style={styles.exampleText}>
+                    예시: {q.correct.examples.slice(0, 2).join(', ')}
+                  </div>
+                ) : (
+                  <div style={{ ...styles.exampleText, opacity: 0 }}>placeholder</div>
+                )}
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>
