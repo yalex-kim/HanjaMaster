@@ -432,6 +432,7 @@ export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound, 
                 onComplete={handleWritingComplete}
                 autoQuiz={true}
                 maxAttempts={3}
+                maxAnimateCount={1}  // 복습 퀴즈에서 힌트 1회 허용
               />
             ) : (
               <div style={{ textAlign: 'center', padding: '20px' }}>
