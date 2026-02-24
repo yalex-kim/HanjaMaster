@@ -196,12 +196,23 @@ export default function WritingCanvas({
       setStatus({ text: `획순 보기는 ${maxAnimateCount}회만 가능합니다!`, type: 'error' });
       return;
     }
+    
+    // 퀴즈 중이라면 캔슬 후 애니메이션 (동시 실행 방지)
+    if (quizActiveRef.current) {
+      writerInstance.current.cancelQuiz();
+      quizActiveRef.current = false;
+    }
+
     setIsQuizMode(false);
-    quizActiveRef.current = false;
     writerInstance.current.animateCharacter({
       onComplete: () => {
         setStatus({ text: '획순 보기 완료', type: 'normal' });
         setAnimateCount(prev => prev + 1);
+        
+        // autoQuiz 모드였으면 애니메이션 완료 후 다시 퀴즈 시작
+        if (autoQuiz) {
+          setTimeout(() => startQuiz(), 500);
+        }
       },
     });
   };
@@ -218,15 +229,34 @@ export default function WritingCanvas({
     <div style={styles.container}>
       <div ref={writerRef} style={{ ...styles.writerWrapper, width, height }} />
 
-      {/* 시도 횟수 하트 표시 (autoQuiz 모드일 때만) */}
+      {/* autoQuiz 모드일 때만 힌트 및 시도 횟수 표시 */}
       {autoQuiz && (
-        <div style={styles.attemptsRow}>
-          {Array.from({ length: maxAttempts }).map((_, i) => (
-            <span key={i} style={i < attemptsLeft ? styles.heartFull : styles.heartEmpty}>
-              {i < attemptsLeft ? '❤️' : '🖤'}
-            </span>
-          ))}
-          <span style={{ marginLeft: 4 }}>기회 남음</span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+          <div style={styles.attemptsRow}>
+            {Array.from({ length: maxAttempts }).map((_, i) => (
+              <span key={i} style={i < attemptsLeft ? styles.heartFull : styles.heartEmpty}>
+                {i < attemptsLeft ? '❤️' : '🖤'}
+              </span>
+            ))}
+            <span style={{ marginLeft: 4 }}>기회 남음</span>
+          </div>
+
+          {/* 복습 퀴즈용 힌트 버튼 (maxAnimateCount가 있을 때만) */}
+          {maxAnimateCount !== null && (
+            <button
+              style={{
+                ...styles.button,
+                background: theme.colors.secondary,
+                fontSize: '12px',
+                padding: '4px 12px',
+                opacity: animateCount >= maxAnimateCount ? 0.5 : 1
+              }}
+              onClick={handleAnimate}
+              disabled={animateCount >= maxAnimateCount}
+            >
+              💡 획순 힌트 ({maxAnimateCount - animateCount}회 남음)
+            </button>
+          )}
         </div>
       )}
 

@@ -371,7 +371,13 @@ export default function QuizScreen({ hanjaPool, onHome, gameState, playSound, on
             // Writing Finished State
             <div style={{ textAlign: 'center', padding: '20px' }}>
                <div style={{ fontSize: '64px', color: theme.colors.accent }}>{q.correct.char}</div>
-               <div style={{ color: theme.colors.success, marginTop: '10px' }}>쓰기 성공!</div>
+               <div style={{ 
+                 color: isCorrect ? theme.colors.success : theme.colors.error, 
+                 marginTop: '10px',
+                 fontWeight: 700 
+               }}>
+                 {isCorrect ? '쓰기 성공! 🎉' : '아쉬워요... ❌'}
+               </div>
             </div>
           )}
         </div>
