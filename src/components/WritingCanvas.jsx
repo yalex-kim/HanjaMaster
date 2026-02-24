@@ -196,12 +196,23 @@ export default function WritingCanvas({
       setStatus({ text: `획순 보기는 ${maxAnimateCount}회만 가능합니다!`, type: 'error' });
       return;
     }
+    
+    // 퀴즈 중이라면 캔슬 후 애니메이션 (동시 실행 방지)
+    if (quizActiveRef.current) {
+      writerInstance.current.cancelQuiz();
+      quizActiveRef.current = false;
+    }
+
     setIsQuizMode(false);
-    quizActiveRef.current = false;
     writerInstance.current.animateCharacter({
       onComplete: () => {
         setStatus({ text: '획순 보기 완료', type: 'normal' });
         setAnimateCount(prev => prev + 1);
+        
+        // autoQuiz 모드였으면 애니메이션 완료 후 다시 퀴즈 시작
+        if (autoQuiz) {
+          setTimeout(() => startQuiz(), 500);
+        }
       },
     });
   };
