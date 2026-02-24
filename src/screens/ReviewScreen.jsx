@@ -73,8 +73,8 @@ const styles = {
     fontSize: 'clamp(18px, 6vw, 28px)',
     fontFamily: theme.fonts.serif,
     color: '#8b5cf6',
-    paddingTop: '8px',     // 윗부분 글씨 잘림 방지
-    marginBottom: '8px',
+    paddingTop: '20px',    // 상단 여백 충분히
+    marginBottom: '12px',
   },
   questionText: {
     fontSize: 'clamp(13px, 4vw, 16px)',
@@ -423,7 +423,7 @@ export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound, 
             <div style={styles.questionText}>{QUESTION_LABELS[3]}</div>
           </div>
           {/* 캔버스 or 결과 — 남은 공간 차지 */}
-          <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '12px' }}>
+          <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '20px' }}>
             {selected === null ? (
               <WritingCanvas
                 char={q.correct.char}
@@ -434,7 +434,7 @@ export default function ReviewScreen({ hanjaPool, onHome, gameState, playSound, 
                 maxAttempts={3}
               />
             ) : (
-              <div style={{ textAlign: 'center' }}>
+              <div style={{ textAlign: 'center', padding: '20px' }}>
                 <div style={{ fontSize: 'clamp(48px, 15vw, 72px)', color: theme.colors.accent }}>{q.correct.char}</div>
                 <div style={{ color: isCorrect ? theme.colors.success : theme.colors.error, marginTop: '8px', fontWeight: 700, fontSize: '18px' }}>
                   {isCorrect ? '✅ 성공!' : '❌ 실패...'}

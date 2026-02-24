@@ -37,16 +37,15 @@ const styles = {
     justifyContent: 'space-between',
   },
   questionArea: {
-    flex: '1 1 0',         // 남은 공간 차지하되 줄어들 수 있음
-    minHeight: 0,          // flex 자식 shrink 허용 (핵심!)
+    flexShrink: 0,         // 가변 크기 대신 고정/컨텐츠 크기 사용
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    paddingTop: '8px',     // 윗부분 글씨 잘림 방지 (여유 공간 확보)
-    marginBottom: '8px',
-    overflow: 'hidden',
+    paddingTop: '20px',    // 상단바와의 간격 충분히 확보
+    marginBottom: '12px',
+    overflow: 'visible',   // 잘림 방지
   },
   hanjaDisplay: {
     fontSize: 'clamp(40px, 15vw, 72px)',  // 화면 크기에 따라 자동 축소
@@ -358,12 +357,12 @@ export default function QuizScreen({ hanjaPool, onHome, gameState, playSound, on
 
       {/* Answer Area */}
       {isWritingQuestion ? (
-        <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
           {selected === null ? (
             <WritingCanvas
               char={q.correct.char}
-              width={280}
-              height={280}
+              width={260}           // QuizScreen은 공간이 좀 더 있으므로 약간 조정
+              height={260}
               onComplete={handleWritingComplete}
               autoQuiz={true}
               maxAttempts={3}
